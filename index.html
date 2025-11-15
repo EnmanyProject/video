@@ -1085,6 +1085,10 @@
             // 캔버스 초기화
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
+            // 디버그: 반투명 배경 추가 (미리보기가 보이는지 확인용)
+            // previewCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+            // previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
             // 텍스트 가져오기
             const captureText = document.getElementById('captureText').value.trim();
             const showTimestamp = document.getElementById('showTimestamp').checked;
@@ -1092,6 +1096,8 @@
             if (!captureText && !showTimestamp) {
                 return; // 표시할 것이 없으면 종료
             }
+
+            console.log('Preview update:', {captureText, showTimestamp, canvasSize: {w: previewCanvas.width, h: previewCanvas.height}});
 
             const scale = 1; // 실제 비디오 크기 기준
 
