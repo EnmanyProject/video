@@ -1,0 +1,11 @@
+{
+  "name": "video-editor",
+  "version": "1.0.0",
+  "description": "비디오 편집기 - 로컬 작업용",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

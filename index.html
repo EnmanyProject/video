@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비디오 편집기 - 내부 작업용</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .input-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .input-group input[type="file"],
+        .input-group input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .video-section {
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+            display: inline-block;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: #000;
+            display: block;
+        }
+
+        #previewCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            border-radius: 15px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
+        .status.warning {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .playback-speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .playback-speed-control label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1em;
+        }
+
+        .playback-speed-control select {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .playback-speed-control select:hover {
+            background: #f0f0ff;
+            border-color: #764ba2;
+        }
+
+        .playback-speed-control select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .gif-controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .gif-controls h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .gif-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .gif-options label {
+            display: flex;
+            flex-direction: column;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .gif-options input,
+        .gif-options select {
+            margin-top: 5px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        .gif-options small {
+            display: block;
+            font-size: 0.85em;
+        }
+
+        .folder-selector {
+            background: #e8f4f8;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .folder-selector.active {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .folder-info {
+            flex: 1;
+        }
+
+        .folder-info .label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .folder-info .path {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .btn-folder {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .btn-folder:hover {
+            background: #5568d3;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 비디오 편집기</h1>
+            <p>역재생 • 캡처 • GIF 생성</p>
+        </div>
+
+        <div class="content">
+            <!-- 비디오 입력 섹션 -->
+            <div class="input-section">
+                <h2>📁 비디오 불러오기</h2>
+
+                <div class="input-group">
+                    <label for="fileInput">로컬 파일 선택</label>
+                    <input type="file" id="fileInput" accept="video/*">
+                </div>
+
+                <div class="input-group">
+                    <label for="urlInput">또는 비디오 URL 입력</label>
+                    <input type="text" id="urlInput" placeholder="https://example.com/video.mp4">
+                    <button class="btn" onclick="loadVideoFromURL()" style="margin-top: 10px;">URL에서 불러오기</button>
+                </div>
+            </div>
+
+            <!-- 저장 폴더 선택 섹션 -->
+            <div class="folder-selector" id="folderSelector">
+                <div class="folder-info">
+                    <div class="label">💾 저장 위치</div>
+                    <div class="path" id="folderPath">브라우저 다운로드 폴더 (기본)</div>
+                </div>
+                <button class="btn-folder" onclick="selectSaveFolder()">📂 폴더 선택</button>
+            </div>
+
+            <!-- 비디오 플레이어 섹션 -->
+            <div class="video-section" id="videoSection">
+                <video id="videoPlayer" controls crossorigin="anonymous">
+                    비디오를 불러와주세요.
+                </video>
+                <canvas id="previewCanvas"></canvas>
+                <canvas id="canvas"></canvas>
+
+                <!-- 재생속도 조절 -->
+                <div class="playback-speed-control">
+                    <label for="playbackSpeed">⚡ 재생 속도:</label>
+                    <select id="playbackSpeed" onchange="changePlaybackSpeed()">
+                        <option value="0.25">0.25x</option>
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x (기본)</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="1.75">1.75x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 캡처 텍스트 옵션 -->
+            <div class="gif-controls" style="margin-bottom: 15px;">
+                <h3>✏️ 캡처 텍스트 추가 (선택사항)</h3>
+                <div class="gif-options">
+                    <label>
+                        텍스트 내용
+                        <input type="text" id="captureText" placeholder="예: 2024-01-15 중요 장면">
+                    </label>
+                    <label>
+                        폰트 크기
+                        <select id="captureFontSize">
+                            <option value="24">작게 (24px)</option>
+                            <option value="36" selected>보통 (36px)</option>
+                            <option value="48">크게 (48px)</option>
+                            <option value="64">매우 크게 (64px)</option>
+                        </select>
+                    </label>
+                    <label>
+                        텍스트 색상
+                        <select id="captureTextColor">
+                            <option value="#FFFFFF" selected>흰색</option>
+                            <option value="#000000">검정</option>
+                            <option value="#FF0000">빨강</option>
+                            <option value="#00FF00">초록</option>
+                            <option value="#0000FF">파랑</option>
+                            <option value="#FFFF00">노랑</option>
+                        </select>
+                    </label>
+                    <label>
+                        텍스트 위치
+                        <select id="captureTextPosition">
+                            <option value="top">상단</option>
+                            <option value="middle">중앙</option>
+                            <option value="bottom" selected>하단</option>
+                        </select>
+                    </label>
+                    <label>
+                        텍스트 스타일
+                        <select id="captureTextStyle">
+                            <option value="transparent" selected>투명 (배경 없음)</option>
+                            <option value="background">배경 있음</option>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- 타임스탬프 자동 표시 옵션 -->
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #ddd;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="showTimestamp" style="width: auto; cursor: pointer;">
+                        <span style="font-weight: 600;">⏱️ 타임스탬프 자동 표시 (우측 하단)</span>
+                    </label>
+                    <small style="color: #666; margin-left: 30px; display: block; margin-top: 5px;">
+                        예: 00:00:15.23 (현재 재생 시간 표시)
+                    </small>
+                </div>
+            </div>
+
+            <!-- 컨트롤 버튼 -->
+            <div class="controls">
+                <button class="btn btn-success" onclick="captureFrame('png')" id="capturePngBtn" disabled>
+                    📸 PNG 캡처
+                </button>
+                <button class="btn btn-success" onclick="captureFrame('jpg')" id="captureJpgBtn" disabled>
+                    📸 JPG 캡처
+                </button>
+                <button class="btn btn-secondary" onclick="showGifOptions()" id="gifBtn" disabled>
+                    🎞️ GIF 생성
+                </button>
+                <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
+                    ⏪ 역재생 비디오 생성
+                </button>
+            </div>
+
+            <!-- GIF 옵션 -->
+            <div class="gif-controls" id="gifControls" style="display: none;">
+                <h3>GIF 생성 옵션</h3>
+                <div class="gif-options">
+                    <label>
+                        시작 시간 (초)
+                        <input type="number" id="gifStartTime" value="0" min="0" step="0.1">
+                    </label>
+                    <label>
+                        지속 시간 (초)
+                        <input type="number" id="gifDuration" value="3" min="0.5" max="10" step="0.5">
+                    </label>
+                    <label>
+                        프레임 레이트 (fps)
+                        <input type="number" id="gifFps" value="10" min="5" max="30" step="5">
+                    </label>
+                    <label>
+                        너비 (픽셀)
+                        <input type="number" id="gifWidth" value="480" min="240" max="1920" step="120">
+                    </label>
+                </div>
+                <button class="btn btn-secondary" onclick="generateGif()">
+                    ✨ GIF 생성 시작
+                </button>
+            </div>
+
+            <!-- 역재생 옵션 -->
+            <div class="gif-controls" id="reverseControls" style="display: none;">
+                <h3>역재생 생성 옵션</h3>
+                <div class="gif-options">
+                    <label>
+                        프레임 레이트 (fps)
+                        <input type="number" id="reverseFps" value="60" min="30" max="60" step="10">
+                        <small style="color: #666; margin-top: 5px;">높을수록 부드럽지만 처리 시간 증가</small>
+                    </label>
+                    <label>
+                        비디오 품질
+                        <select id="reverseQuality" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="10000000">최고 (10 Mbps)</option>
+                            <option value="8000000" selected>고품질 (8 Mbps)</option>
+                            <option value="5000000">중간 (5 Mbps)</option>
+                            <option value="3000000">낮음 (3 Mbps)</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="btn" onclick="startReverseVideo()">
+                    ✨ 역재생 시작
+                </button>
+            </div>
+
+            <!-- 진행 상황 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill">0%</div>
+                </div>
+            </div>
+
+            <!-- 상태 메시지 -->
+            <div class="status" id="statusMessage"></div>
+        </div>
+    </div>
+
+    <!-- GIF.js 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const urlInput = document.getElementById('urlInput');
+
+        let currentVideoFile = null;
+        let saveFolderHandle = null; // 선택된 저장 폴더 핸들
+        let allowPlay = true; // 재생 허용 플래그
+        let previewAnimationId = null; // 프리뷰 애니메이션 ID
+
+        // 파일 입력 처리
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentVideoFile = file;
+                const url = URL.createObjectURL(file);
+                videoPlayer.src = url;
+                enableControls();
+                showStatus('비디오가 로드되었습니다.', 'success');
+            }
+        });
+
+        // URL에서 비디오 로드
+        function loadVideoFromURL() {
+            const url = urlInput.value.trim();
+            if (!url) {
+                showStatus('URL을 입력해주세요.', 'error');
+                return;
+            }
+
+            videoPlayer.src = url;
+            currentVideoFile = null; // URL 모드
+            enableControls();
+            showStatus('URL에서 비디오를 로드했습니다.', 'success');
+        }
+
+        // 컨트롤 버튼 활성화
+        function enableControls() {
+            document.getElementById('capturePngBtn').disabled = false;
+            document.getElementById('captureJpgBtn').disabled = false;
+            document.getElementById('gifBtn').disabled = false;
+            document.getElementById('reverseBtn').disabled = false;
+        }
+
+        // 재생 속도 변경
+        function changePlaybackSpeed() {
+            const speed = parseFloat(document.getElementById('playbackSpeed').value);
+            videoPlayer.playbackRate = speed;
+            showStatus(`재생 속도를 ${speed}x로 변경했습니다.`, 'success');
+        }
+
+        // 저장 폴더 선택
+        async function selectSaveFolder() {
+            try {
+                // File System Access API 지원 확인
+                if (!('showDirectoryPicker' in window)) {
+                    showStatus('이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome/Edge를 사용해주세요.', 'error');
+                    return;
+                }
+
+                // 폴더 선택 대화상자 표시
+                saveFolderHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite'
+                });
+
+                // UI 업데이트
+                const folderSelector = document.getElementById('folderSelector');
+                const folderPath = document.getElementById('folderPath');
+
+                folderPath.textContent = saveFolderHandle.name;
+                folderSelector.classList.add('active');
+
+                showStatus(`저장 폴더: ${saveFolderHandle.name}`, 'success');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('폴더 선택 오류:', err);
+                    showStatus('폴더 선택 중 오류가 발생했습니다.', 'error');
+                }
+            }
+        }
+
+        // 파일을 선택된 폴더 또는 다운로드로 저장
+        async function saveFile(blob, filename) {
+            if (saveFolderHandle) {
+                try {
+                    // 선택된 폴더에 저장
+                    const fileHandle = await saveFolderHandle.getFileHandle(filename, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    showStatus(`${filename}이(가) ${saveFolderHandle.name} 폴더에 저장되었습니다.`, 'success');
+                } catch (err) {
+                    console.error('파일 저장 오류:', err);
+                    // 실패 시 기본 다운로드로 전환
+                    downloadFile(blob, filename);
+                }
+            } else {
+                // 폴더가 선택되지 않았으면 기본 다운로드
+                downloadFile(blob, filename);
+            }
+        }
+
+        // 브라우저 다운로드로 저장 (기본 방식)
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus(`${filename}이(가) 다운로드되었습니다.`, 'success');
+        }
+
+        // 현재 프레임 캡처
+        function captureFrame(format) {
+            // 고품질 캡처를 위한 2배 스케일 사용
+            const scale = 2;
+            const width = videoPlayer.videoWidth;
+            const height = videoPlayer.videoHeight;
+
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+
+            // 고품질 렌더링 설정
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            // 스케일 적용하여 그리기
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 텍스트 추가 (입력된 경우)
+            const captureText = document.getElementById('captureText').value.trim();
+            if (captureText) {
+                const fontSize = parseInt(document.getElementById('captureFontSize').value) * scale;
+                const textColor = document.getElementById('captureTextColor').value;
+                const textPosition = document.getElementById('captureTextPosition').value;
+                const textStyle = document.getElementById('captureTextStyle').value;
+
+                // 폰트 설정
+                ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 텍스트 위치 계산
+                const x = canvas.width / 2;
+                let y;
+                const padding = fontSize * 0.8;
+
+                if (textPosition === 'top') {
+                    y = padding;
+                } else if (textPosition === 'middle') {
+                    y = canvas.height / 2;
+                } else { // bottom
+                    y = canvas.height - padding;
+                }
+
+                const textMetrics = ctx.measureText(captureText);
+                const textWidth = textMetrics.width;
+                const textHeight = fontSize * 1.4;
+
+                // 텍스트 배경 (스타일에 따라)
+                if (textStyle === 'background') {
+                    // 반투명 검정 박스
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    ctx.fillRect(
+                        x - textWidth / 2 - fontSize * 0.5,
+                        y - textHeight / 2,
+                        textWidth + fontSize,
+                        textHeight
+                    );
+                }
+
+                // 텍스트 외곽선 (가독성 - 투명 스타일에서 더 두껍게)
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = textStyle === 'transparent' ? scale * 4 : scale * 3;
+                ctx.strokeText(captureText, x, y);
+
+                // 텍스트 본체
+                ctx.fillStyle = textColor;
+                ctx.fillText(captureText, x, y);
+            }
+
+            // 타임스탬프 자동 표시
+            const showTimestamp = document.getElementById('showTimestamp').checked;
+            if (showTimestamp) {
+                // 시간 포맷팅 함수 (HH:MM:SS.ms)
+                const formatTime = (seconds) => {
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    const secs = Math.floor(seconds % 60);
+                    const ms = Math.floor((seconds % 1) * 100);
+
+                    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+                };
+
+                const timestamp = formatTime(videoPlayer.currentTime);
+                const timestampFontSize = 28 * scale; // 고정 크기
+
+                // 폰트 설정
+                ctx.font = `bold ${timestampFontSize}px 'Courier New', monospace`;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+
+                // 우측 하단 위치
+                const tsX = canvas.width - timestampFontSize * 0.5;
+                const tsY = canvas.height - timestampFontSize * 0.5;
+
+                // 텍스트 크기 측정
+                const tsMetrics = ctx.measureText(timestamp);
+                const tsWidth = tsMetrics.width;
+                const tsHeight = timestampFontSize * 1.2;
+
+                // 배경 박스
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(
+                    tsX - tsWidth - timestampFontSize * 0.3,
+                    tsY - tsHeight + timestampFontSize * 0.2,
+                    tsWidth + timestampFontSize * 0.6,
+                    tsHeight
+                );
+
+                // 텍스트 외곽선
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = scale * 2;
+                ctx.strokeText(timestamp, tsX, tsY);
+
+                // 텍스트 본체
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(timestamp, tsX, tsY);
+            }
+
+            const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+            const extension = format === 'png' ? 'png' : 'jpg';
+
+            canvas.toBlob(async function(blob) {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const filename = `capture_${timestamp}.${extension}`;
+                await saveFile(blob, filename);
+            }, mimeType, format === 'jpg' ? 1.0 : undefined);  // JPG 최대 품질
+        }
+
+        // GIF 옵션 표시
+        function showGifOptions() {
+            const gifControls = document.getElementById('gifControls');
+            const reverseControls = document.getElementById('reverseControls');
+            reverseControls.style.display = 'none';
+            gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
+
+            if (gifControls.style.display === 'block') {
+                document.getElementById('gifStartTime').max = videoPlayer.duration;
+            }
+        }
+
+        // 역재생 옵션 표시
+        function showReverseOptions() {
+            const gifControls = document.getElementById('gifControls');
+            const reverseControls = document.getElementById('reverseControls');
+            gifControls.style.display = 'none';
+            reverseControls.style.display = reverseControls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 역재생 시작
+        function startReverseVideo() {
+            reverseVideo();
+        }
+
+        // GIF 생성
+        async function generateGif() {
+            const startTime = parseFloat(document.getElementById('gifStartTime').value);
+            const duration = parseFloat(document.getElementById('gifDuration').value);
+            const fps = parseInt(document.getElementById('gifFps').value);
+            const width = parseInt(document.getElementById('gifWidth').value);
+
+            if (startTime + duration > videoPlayer.duration) {
+                showStatus('시작 시간 + 지속 시간이 비디오 길이를 초과합니다.', 'error');
+                return;
+            }
+
+            showStatus('GIF 생성 중... 잠시만 기다려주세요.', 'warning');
+            showProgress(0);
+
+            try {
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: width,
+                    height: Math.floor((videoPlayer.videoHeight / videoPlayer.videoWidth) * width),
+                    workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+                });
+
+                const frameCount = Math.floor(duration * fps);
+                const frameDelay = 1000 / fps;
+
+                canvas.width = width;
+                canvas.height = Math.floor((videoPlayer.videoHeight / videoPlayer.videoWidth) * width);
+
+                const originalTime = videoPlayer.currentTime;
+                videoPlayer.currentTime = startTime;
+
+                let framesAdded = 0;
+
+                const addFrame = () => {
+                    return new Promise((resolve) => {
+                        if (framesAdded >= frameCount) {
+                            resolve();
+                            return;
+                        }
+
+                        videoPlayer.currentTime = startTime + (framesAdded / fps);
+
+                        videoPlayer.onseeked = () => {
+                            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+                            gif.addFrame(ctx, { copy: true, delay: frameDelay });
+                            framesAdded++;
+
+                            const progress = (framesAdded / frameCount) * 100;
+                            showProgress(progress);
+
+                            if (framesAdded < frameCount) {
+                                setTimeout(() => addFrame().then(resolve), 10);
+                            } else {
+                                resolve();
+                            }
+                        };
+                    });
+                };
+
+                await addFrame();
+
+                gif.on('finished', async function(blob) {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `animation_${timestamp}.gif`;
+                    await saveFile(blob, filename);
+
+                    videoPlayer.currentTime = originalTime;
+                    hideProgress();
+                    showStatus('GIF가 성공적으로 생성되었습니다!', 'success');
+                });
+
+                gif.render();
+
+            } catch (error) {
+                hideProgress();
+                showStatus('GIF 생성 중 오류가 발생했습니다: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 역재생 비디오 생성 (Canvas + MediaRecorder 사용)
+        async function reverseVideo() {
+            // 비디오 로드 확인
+            if (!videoPlayer.src) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            // 비디오가 제대로 로드되었는지 확인
+            if (!videoPlayer.duration || isNaN(videoPlayer.duration) || videoPlayer.duration === Infinity) {
+                showStatus('비디오가 제대로 로드되지 않았습니다. 다시 시도해주세요.', 'error');
+                return;
+            }
+
+            // 비디오 크기 확인
+            if (!videoPlayer.videoWidth || !videoPlayer.videoHeight) {
+                showStatus('비디오 메타데이터를 불러올 수 없습니다. 로컬 파일을 사용해주세요.', 'error');
+                return;
+            }
+
+            // 사용자 설정 가져오기
+            const fps = parseInt(document.getElementById('reverseFps').value) || 60;
+            const bitrate = parseInt(document.getElementById('reverseQuality').value) || 8000000;
+
+            showStatus(`역재생 비디오 생성 중 (${fps}fps, ${(bitrate/1000000).toFixed(0)}Mbps)... 이 작업은 시간이 걸릴 수 있습니다.`, 'warning');
+            showProgress(0);
+
+            try {
+                // 비디오 정보 가져오기
+                const duration = videoPlayer.duration;
+                const totalFrames = Math.floor(duration * fps);
+
+                // Canvas 설정
+                const recordCanvas = document.createElement('canvas');
+                recordCanvas.width = videoPlayer.videoWidth;
+                recordCanvas.height = videoPlayer.videoHeight;
+                const recordCtx = recordCanvas.getContext('2d');
+
+                // MediaRecorder 설정
+                const stream = recordCanvas.captureStream(fps);
+
+                // 코덱 지원 확인 및 설정
+                let mimeType = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm;codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = 'video/webm';
+                    }
+                }
+
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: bitrate
+                });
+
+                const chunks = [];
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `reversed_${timestamp}.webm`;
+
+                    await saveFile(blob, filename);
+                    hideProgress();
+                };
+
+                // 역재생 프레임 캡처
+                let currentFrame = 0;
+                const frameInterval = 1 / fps;
+                const frameDelayMs = 1000 / fps; // 프레임당 밀리초
+                let lastFrameTime = 0;
+                let animationId = null;
+
+                const captureFrame = () => {
+                    if (currentFrame >= totalFrames) {
+                        mediaRecorder.stop();
+                        return;
+                    }
+
+                    // 역순으로 시간 설정 (끝에서 시작)
+                    const time = duration - (currentFrame * frameInterval);
+                    videoPlayer.currentTime = Math.max(0, Math.min(time, duration));
+                };
+
+                const onSeeked = () => {
+                    // 현재 프레임을 캔버스에 그리기
+                    recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
+
+                    currentFrame++;
+                    const progress = (currentFrame / totalFrames) * 100;
+                    showProgress(progress);
+
+                    if (currentFrame < totalFrames) {
+                        // 정확한 프레임 간격으로 다음 프레임 캡처
+                        const now = performance.now();
+                        const elapsed = now - lastFrameTime;
+                        const delay = Math.max(0, frameDelayMs - elapsed);
+
+                        setTimeout(() => {
+                            lastFrameTime = performance.now();
+                            captureFrame();
+                        }, delay);
+                    } else {
+                        mediaRecorder.stop();
+                        videoPlayer.removeEventListener('seeked', onSeeked);
+                    }
+                };
+
+                // seeked 이벤트 리스너 등록
+                videoPlayer.addEventListener('seeked', onSeeked);
+
+                // 녹화 시작
+                lastFrameTime = performance.now();
+                mediaRecorder.start();
+                captureFrame();
+
+            } catch (error) {
+                hideProgress();
+                showStatus('역재생 비디오 생성 중 오류가 발생했습니다: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status show ' + type;
+
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // 진행률 표시
+        function showProgress(percent) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            progressContainer.classList.add('show');
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = Math.round(percent) + '%';
+        }
+
+        // 진행률 숨기기
+        function hideProgress() {
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.classList.remove('show');
+        }
+
+        // 비디오 메타데이터 로드 완료 시
+        videoPlayer.addEventListener('loadedmetadata', function() {
+            console.log('비디오 로드 완료:', {
+                duration: videoPlayer.duration,
+                width: videoPlayer.videoWidth,
+                height: videoPlayer.videoHeight
+            });
+        });
+
+        // 텍스트 프리뷰 업데이트 함수
+        function updateTextPreview() {
+            // Canvas 크기를 비디오에 맞춤
+            const rect = videoPlayer.getBoundingClientRect();
+            previewCanvas.width = videoPlayer.videoWidth || rect.width;
+            previewCanvas.height = videoPlayer.videoHeight || rect.height;
+
+            // 캔버스 초기화
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+            // 텍스트 가져오기
+            const captureText = document.getElementById('captureText').value.trim();
+            const showTimestamp = document.getElementById('showTimestamp').checked;
+
+            if (!captureText && !showTimestamp) {
+                return; // 표시할 것이 없으면 종료
+            }
+
+            const scale = previewCanvas.width / (rect.width || 1);
+
+            // 커스텀 텍스트 표시
+            if (captureText) {
+                const fontSize = parseInt(document.getElementById('captureFontSize').value) * scale;
+                const textColor = document.getElementById('captureTextColor').value;
+                const textPosition = document.getElementById('captureTextPosition').value;
+                const textStyle = document.getElementById('captureTextStyle').value;
+
+                previewCtx.font = `bold ${fontSize}px Arial, sans-serif`;
+                previewCtx.textAlign = 'center';
+                previewCtx.textBaseline = 'middle';
+
+                const x = previewCanvas.width / 2;
+                let y;
+                const padding = fontSize * 0.8;
+
+                if (textPosition === 'top') {
+                    y = padding;
+                } else if (textPosition === 'middle') {
+                    y = previewCanvas.height / 2;
+                } else {
+                    y = previewCanvas.height - padding;
+                }
+
+                const textMetrics = previewCtx.measureText(captureText);
+                const textWidth = textMetrics.width;
+                const textHeight = fontSize * 1.4;
+
+                if (textStyle === 'background') {
+                    previewCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    previewCtx.fillRect(
+                        x - textWidth / 2 - fontSize * 0.5,
+                        y - textHeight / 2,
+                        textWidth + fontSize,
+                        textHeight
+                    );
+                }
+
+                previewCtx.strokeStyle = '#000000';
+                previewCtx.lineWidth = textStyle === 'transparent' ? scale * 4 : scale * 3;
+                previewCtx.strokeText(captureText, x, y);
+
+                previewCtx.fillStyle = textColor;
+                previewCtx.fillText(captureText, x, y);
+            }
+
+            // 타임스탬프 표시
+            if (showTimestamp) {
+                const formatTime = (seconds) => {
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    const secs = Math.floor(seconds % 60);
+                    const ms = Math.floor((seconds % 1) * 100);
+                    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+                };
+
+                const timestamp = formatTime(videoPlayer.currentTime || 0);
+                const timestampFontSize = 28 * scale;
+
+                previewCtx.font = `bold ${timestampFontSize}px 'Courier New', monospace`;
+                previewCtx.textAlign = 'right';
+                previewCtx.textBaseline = 'bottom';
+
+                const tsX = previewCanvas.width - timestampFontSize * 0.5;
+                const tsY = previewCanvas.height - timestampFontSize * 0.5;
+
+                const tsMetrics = previewCtx.measureText(timestamp);
+                const tsWidth = tsMetrics.width;
+                const tsHeight = timestampFontSize * 1.2;
+
+                previewCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                previewCtx.fillRect(
+                    tsX - tsWidth - timestampFontSize * 0.3,
+                    tsY - tsHeight + timestampFontSize * 0.2,
+                    tsWidth + timestampFontSize * 0.6,
+                    tsHeight
+                );
+
+                previewCtx.strokeStyle = '#000000';
+                previewCtx.lineWidth = scale * 2;
+                previewCtx.strokeText(timestamp, tsX, tsY);
+
+                previewCtx.fillStyle = '#FFFFFF';
+                previewCtx.fillText(timestamp, tsX, tsY);
+            }
+        }
+
+        // 프리뷰 애니메이션 루프
+        function animatePreview() {
+            updateTextPreview();
+            previewAnimationId = requestAnimationFrame(animatePreview);
+        }
+
+        // 텍스트 옵션 변경 시 프리뷰 업데이트
+        ['captureText', 'captureFontSize', 'captureTextColor', 'captureTextPosition', 'captureTextStyle', 'showTimestamp'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', updateTextPreview);
+                element.addEventListener('change', updateTextPreview);
+            }
+        });
+
+        // 비디오 로드 시 프리뷰 시작
+        videoPlayer.addEventListener('loadedmetadata', function() {
+            // 기존 애니메이션 중지
+            if (previewAnimationId) {
+                cancelAnimationFrame(previewAnimationId);
+            }
+            // 프리뷰 시작
+            animatePreview();
+        });
+
+        // 비디오 에러 처리
+        videoPlayer.addEventListener('error', function(e) {
+            showStatus('비디오 로드 중 오류가 발생했습니다.', 'error');
+            console.error('Video error:', e);
+        });
+
+        // 비디오 클릭 시 일시정지 처리
+        videoPlayer.addEventListener('mousedown', function(e) {
+            // controls의 버튼 클릭이 아닌 경우
+            if (e.target === videoPlayer) {
+                allowPlay = false;
+                if (!videoPlayer.paused) {
+                    videoPlayer.pause();
+                }
+            } else {
+                // controls 버튼 클릭은 허용
+                allowPlay = true;
+            }
+        });
+
+        // click 이벤트의 기본 동작 차단
+        videoPlayer.addEventListener('click', function(e) {
+            if (e.target === videoPlayer) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        // play 이벤트 감지하여 클릭으로 인한 재생 차단
+        videoPlayer.addEventListener('play', function(e) {
+            if (!allowPlay) {
+                videoPlayer.pause();
+            }
+            allowPlay = true;
+        });
+    </script>
+</body>
+</html>

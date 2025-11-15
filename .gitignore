@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+
+# Test screenshots
+test_screenshots/
+
+# Claude
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Lock files (optional - keep if you want consistent dependencies)
+# package-lock.json
+
+# Parent directory files (prevent tracking)
+../*
