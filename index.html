@@ -1073,10 +1073,14 @@
 
         // 텍스트 프리뷰 업데이트 함수
         function updateTextPreview() {
+            // 비디오가 로드되지 않았으면 종료
+            if (!videoPlayer.videoWidth || videoPlayer.videoWidth === 0) {
+                return;
+            }
+
             // Canvas 크기를 비디오에 맞춤
-            const rect = videoPlayer.getBoundingClientRect();
-            previewCanvas.width = videoPlayer.videoWidth || rect.width;
-            previewCanvas.height = videoPlayer.videoHeight || rect.height;
+            previewCanvas.width = videoPlayer.videoWidth;
+            previewCanvas.height = videoPlayer.videoHeight;
 
             // 캔버스 초기화
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
@@ -1089,7 +1093,7 @@
                 return; // 표시할 것이 없으면 종료
             }
 
-            const scale = previewCanvas.width / (rect.width || 1);
+            const scale = 1; // 실제 비디오 크기 기준
 
             // 커스텀 텍스트 표시
             if (captureText) {
@@ -1201,6 +1205,11 @@
             // 프리뷰 시작
             animatePreview();
         });
+
+        // 비디오 일시정지/재생 시에도 미리보기 유지
+        videoPlayer.addEventListener('pause', updateTextPreview);
+        videoPlayer.addEventListener('play', updateTextPreview);
+        videoPlayer.addEventListener('seeked', updateTextPreview);
 
         // 비디오 에러 처리
         videoPlayer.addEventListener('error', function(e) {
