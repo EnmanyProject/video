@@ -431,6 +431,60 @@
                 </div>
             </div>
 
+            <!-- 필터 조절 옵션 -->
+            <div class="gif-controls" style="margin-bottom: 15px;">
+                <h3>🎨 비디오 필터 조절 (선택사항)</h3>
+                <div class="gif-options">
+                    <label>
+                        밝기 (Brightness)
+                        <input type="range" id="filterBrightness" min="0" max="200" value="100" step="1">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="brightnessValue">100</span>%</small>
+                    </label>
+                    <label>
+                        대비 (Contrast)
+                        <input type="range" id="filterContrast" min="0" max="200" value="100" step="1">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="contrastValue">100</span>%</small>
+                    </label>
+                    <label>
+                        채도 (Saturation)
+                        <input type="range" id="filterSaturation" min="0" max="200" value="100" step="1">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="saturationValue">100</span>%</small>
+                    </label>
+                    <label>
+                        색조 (Hue Rotate)
+                        <input type="range" id="filterHue" min="0" max="360" value="0" step="1">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="hueValue">0</span>°</small>
+                    </label>
+                    <label>
+                        선명도 (Blur)
+                        <input type="range" id="filterBlur" min="0" max="10" value="0" step="0.5">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="blurValue">0</span>px</small>
+                    </label>
+                    <label>
+                        그레이스케일
+                        <input type="range" id="filterGrayscale" min="0" max="100" value="0" step="1">
+                        <small style="color: #666; margin-top: 5px;">현재: <span id="grayscaleValue">0</span>%</small>
+                    </label>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn" onclick="applyFilterPreset('none')" style="background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">
+                        🔄 필터 초기화
+                    </button>
+                    <button class="btn" onclick="applyFilterPreset('bw')" style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);">
+                        ⚫ 흑백
+                    </button>
+                    <button class="btn" onclick="applyFilterPreset('sepia')" style="background: linear-gradient(135deg, #d4a574 0%, #a67c52 100%);">
+                        🟤 세피아
+                    </button>
+                    <button class="btn" onclick="applyFilterPreset('vintage')" style="background: linear-gradient(135deg, #e8c4a0 0%, #c9a882 100%);">
+                        📷 빈티지
+                    </button>
+                    <button class="btn" onclick="applyFilterPreset('vivid')" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                        🌈 선명하게
+                    </button>
+                </div>
+            </div>
+
             <!-- 캡처 텍스트 옵션 -->
             <div class="gif-controls" style="margin-bottom: 15px;">
                 <h3>✏️ 캡처 텍스트 추가 (선택사항)</h3>
@@ -670,6 +724,16 @@
         let allowPlay = true; // 재생 허용 플래그
         let previewAnimationId = null; // 프리뷰 애니메이션 ID
 
+        // 필터 상태
+        let filterState = {
+            brightness: 100,
+            contrast: 100,
+            saturation: 100,
+            hue: 0,
+            blur: 0,
+            grayscale: 0
+        };
+
         // 파일 입력 처리
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -789,8 +853,14 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
+            // 필터 적용
+            ctx.filter = getCurrentFilterString();
+
             // 스케일 적용하여 그리기
             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 필터 초기화 (텍스트에는 필터 미적용)
+            ctx.filter = 'none';
 
             // 텍스트 추가 (입력된 경우)
             const captureText = document.getElementById('captureText').value.trim();
@@ -1080,8 +1150,10 @@
                 };
 
                 const onSeeked = () => {
-                    // 현재 프레임을 캔버스에 그리기
+                    // 필터 적용 및 현재 프레임을 캔버스에 그리기
+                    recordCtx.filter = getCurrentFilterString();
                     recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
+                    recordCtx.filter = 'none';
 
                     currentFrame++;
                     const progress = (currentFrame / totalFrames) * 100;
@@ -1263,8 +1335,14 @@
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
+            // 필터 적용
+            ctx.filter = getCurrentFilterString();
+
             // 스케일 적용하여 그리기
             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+            // 필터 초기화 (텍스트에는 필터 미적용)
+            ctx.filter = 'none';
 
             // 텍스트 추가 (입력된 경우)
             const captureText = document.getElementById('captureText').value.trim();
@@ -1448,7 +1526,10 @@
                         videoPlayer.currentTime = startTime + (framesAdded / fps);
 
                         videoPlayer.onseeked = () => {
+                            // 필터 적용하여 그리기
+                            ctx.filter = getCurrentFilterString();
                             ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+                            ctx.filter = 'none';
                             gif.addFrame(ctx, { copy: true, delay: frameDelay });
                             framesAdded++;
 
@@ -1575,8 +1656,10 @@
                 };
 
                 const onSeeked = () => {
-                    // 현재 프레임을 캔버스에 그리기
+                    // 필터 적용 및 현재 프레임을 캔버스에 그리기
+                    recordCtx.filter = getCurrentFilterString();
                     recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
+                    recordCtx.filter = 'none';
 
                     currentFrame++;
                     const progress = (currentFrame / totalFrames) * 100;
@@ -1646,6 +1729,74 @@
                 width: videoPlayer.videoWidth,
                 height: videoPlayer.videoHeight
             });
+            // 필터 적용
+            applyVideoFilter();
+        });
+
+        // 필터 CSS 문자열 생성
+        function getCurrentFilterString() {
+            return `brightness(${filterState.brightness}%) contrast(${filterState.contrast}%) saturate(${filterState.saturation}%) hue-rotate(${filterState.hue}deg) blur(${filterState.blur}px) grayscale(${filterState.grayscale}%)`;
+        }
+
+        // 비디오 플레이어에 필터 적용
+        function applyVideoFilter() {
+            const filterString = getCurrentFilterString();
+            videoPlayer.style.filter = filterString;
+        }
+
+        // 필터 프리셋 적용
+        function applyFilterPreset(preset) {
+            switch (preset) {
+                case 'none':
+                    filterState = { brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0 };
+                    break;
+                case 'bw':
+                    filterState = { brightness: 100, contrast: 110, saturation: 0, hue: 0, blur: 0, grayscale: 100 };
+                    break;
+                case 'sepia':
+                    filterState = { brightness: 110, contrast: 90, saturation: 50, hue: 20, blur: 0, grayscale: 50 };
+                    break;
+                case 'vintage':
+                    filterState = { brightness: 110, contrast: 120, saturation: 80, hue: 10, blur: 0.5, grayscale: 20 };
+                    break;
+                case 'vivid':
+                    filterState = { brightness: 110, contrast: 120, saturation: 150, hue: 0, blur: 0, grayscale: 0 };
+                    break;
+            }
+
+            // UI 업데이트
+            document.getElementById('filterBrightness').value = filterState.brightness;
+            document.getElementById('filterContrast').value = filterState.contrast;
+            document.getElementById('filterSaturation').value = filterState.saturation;
+            document.getElementById('filterHue').value = filterState.hue;
+            document.getElementById('filterBlur').value = filterState.blur;
+            document.getElementById('filterGrayscale').value = filterState.grayscale;
+
+            updateFilterValues();
+            applyVideoFilter();
+        }
+
+        // 필터 값 표시 업데이트
+        function updateFilterValues() {
+            document.getElementById('brightnessValue').textContent = filterState.brightness;
+            document.getElementById('contrastValue').textContent = filterState.contrast;
+            document.getElementById('saturationValue').textContent = filterState.saturation;
+            document.getElementById('hueValue').textContent = filterState.hue;
+            document.getElementById('blurValue').textContent = filterState.blur;
+            document.getElementById('grayscaleValue').textContent = filterState.grayscale;
+        }
+
+        // 필터 슬라이더 이벤트 리스너 등록
+        ['filterBrightness', 'filterContrast', 'filterSaturation', 'filterHue', 'filterBlur', 'filterGrayscale'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', function() {
+                    const key = id.replace('filter', '').toLowerCase();
+                    filterState[key] = parseFloat(this.value);
+                    updateFilterValues();
+                    applyVideoFilter();
+                });
+            }
         });
 
         // 텍스트 프리뷰 업데이트 함수
