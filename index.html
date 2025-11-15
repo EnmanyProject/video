@@ -1086,8 +1086,8 @@
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
             // 디버그: 반투명 배경 추가 (미리보기가 보이는지 확인용)
-            // previewCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-            // previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+            previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
 
             // 텍스트 가져오기
             const captureText = document.getElementById('captureText').value.trim();
