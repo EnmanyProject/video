@@ -559,6 +559,9 @@
                 <button class="btn" onclick="showTrimOptions()" id="trimBtn" disabled>
                     ✂️ 구간 잘라내기
                 </button>
+                <button class="btn btn-success" onclick="showThumbnailOptions()" id="thumbnailBtn" disabled>
+                    🖼️ 썸네일 생성
+                </button>
                 <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
                     ⏪ 역재생 비디오 생성
                 </button>
@@ -671,6 +674,50 @@
                 </button>
             </div>
 
+            <!-- 썸네일 생성 옵션 -->
+            <div class="gif-controls" id="thumbnailControls" style="display: none;">
+                <h3>🖼️ 썸네일 생성 옵션</h3>
+                <div class="gif-options">
+                    <label>
+                        썸네일 개수
+                        <select id="thumbnailCount">
+                            <option value="4">4개 (2x2)</option>
+                            <option value="6" selected>6개 (3x2)</option>
+                            <option value="9">9개 (3x3)</option>
+                            <option value="12">12개 (4x3)</option>
+                            <option value="16">16개 (4x4)</option>
+                        </select>
+                    </label>
+                    <label>
+                        썸네일 크기
+                        <select id="thumbnailSize">
+                            <option value="160">작게 (160px)</option>
+                            <option value="240" selected>보통 (240px)</option>
+                            <option value="320">크게 (320px)</option>
+                            <option value="480">매우 크게 (480px)</option>
+                        </select>
+                    </label>
+                    <label>
+                        출력 형식
+                        <select id="thumbnailOutput">
+                            <option value="grid" selected>단일 그리드 이미지</option>
+                            <option value="individual">개별 이미지</option>
+                        </select>
+                        <small style="color: #666; margin-top: 5px;">그리드: 하나의 이미지로 결합 / 개별: 각각 별도 저장</small>
+                    </label>
+                    <label>
+                        이미지 포맷
+                        <select id="thumbnailFormat">
+                            <option value="png">PNG (무손실)</option>
+                            <option value="jpg" selected>JPG (압축)</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="btn btn-success" onclick="startGenerateThumbnails()">
+                    ✨ 썸네일 생성 시작
+                </button>
+            </div>
+
             <!-- 역재생 옵션 -->
             <div class="gif-controls" id="reverseControls" style="display: none;">
                 <h3>역재생 생성 옵션</h3>
@@ -767,6 +814,7 @@
             document.getElementById('intervalCaptureBtn').disabled = false;
             document.getElementById('gifBtn').disabled = false;
             document.getElementById('trimBtn').disabled = false;
+            document.getElementById('thumbnailBtn').disabled = false;
             document.getElementById('reverseBtn').disabled = false;
         }
 
@@ -978,10 +1026,12 @@
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
 
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
             intervalControls.style.display = intervalControls.style.display === 'none' ? 'block' : 'none';
 
@@ -998,10 +1048,12 @@
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
 
             intervalControls.style.display = 'none';
             trimControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
@@ -1015,10 +1067,12 @@
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
             trimControls.style.display = trimControls.style.display === 'none' ? 'block' : 'none';
 
@@ -1030,16 +1084,328 @@
             }
         }
 
-        // 역재생 옵션 표시
-        function showReverseOptions() {
+        // 썸네일 옵션 표시
+        function showThumbnailOptions() {
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
+            reverseControls.style.display = 'none';
+            thumbnailControls.style.display = thumbnailControls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 썸네일 생성 상태
+        let thumbnailState = {
+            isRunning: false,
+            currentIndex: 0,
+            totalCount: 0,
+            thumbnails: [],
+            originalTime: 0
+        };
+
+        // 썸네일 생성 시작
+        async function startGenerateThumbnails() {
+            // 비디오 로드 확인
+            if (!videoPlayer.src || !videoPlayer.duration) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            if (!videoPlayer.videoWidth || !videoPlayer.videoHeight) {
+                showStatus('비디오가 제대로 로드되지 않았습니다.', 'error');
+                return;
+            }
+
+            // 설정 가져오기
+            const count = parseInt(document.getElementById('thumbnailCount').value);
+            const size = parseInt(document.getElementById('thumbnailSize').value);
+            const outputMode = document.getElementById('thumbnailOutput').value;
+            const format = document.getElementById('thumbnailFormat').value;
+            const duration = videoPlayer.duration;
+
+            // 타임스탬프 계산 (균등 분포)
+            const timestamps = [];
+            const interval = duration / (count + 1);
+
+            for (let i = 1; i <= count; i++) {
+                timestamps.push(interval * i);
+            }
+
+            // 상태 초기화
+            thumbnailState = {
+                isRunning: true,
+                currentIndex: 0,
+                totalCount: count,
+                thumbnails: [],
+                originalTime: videoPlayer.currentTime,
+                timestamps: timestamps,
+                size: size,
+                outputMode: outputMode,
+                format: format
+            };
+
+            showStatus(`썸네일 생성 중... (0/${count})`, 'info');
+            updateProgress(0);
+
+            // 첫 번째 썸네일 캡처 시작
+            await captureNextThumbnail();
+        }
+
+        // 다음 썸네일 캡처
+        async function captureNextThumbnail() {
+            if (!thumbnailState.isRunning || thumbnailState.currentIndex >= thumbnailState.totalCount) {
+                // 모든 썸네일 캡처 완료
+                if (thumbnailState.currentIndex >= thumbnailState.totalCount) {
+                    await finishThumbnailGeneration();
+                }
+                return;
+            }
+
+            const timestamp = thumbnailState.timestamps[thumbnailState.currentIndex];
+
+            // seeked 이벤트로 캡처
+            const seekedHandler = async () => {
+                videoPlayer.removeEventListener('seeked', seekedHandler);
+
+                try {
+                    // 썸네일 캡처
+                    const thumbnailData = await captureThumbnailFrame();
+                    thumbnailState.thumbnails.push(thumbnailData);
+
+                    // 진행률 업데이트
+                    thumbnailState.currentIndex++;
+                    const progress = thumbnailState.currentIndex / thumbnailState.totalCount;
+                    updateProgress(progress);
+                    showStatus(`썸네일 생성 중... (${thumbnailState.currentIndex}/${thumbnailState.totalCount})`, 'info');
+
+                    // 다음 썸네일
+                    await captureNextThumbnail();
+                } catch (error) {
+                    console.error('썸네일 캡처 오류:', error);
+                    thumbnailState.isRunning = false;
+                    showStatus('썸네일 생성 중 오류가 발생했습니다.', 'error');
+                    videoPlayer.currentTime = thumbnailState.originalTime;
+                }
+            };
+
+            videoPlayer.addEventListener('seeked', seekedHandler);
+            videoPlayer.currentTime = timestamp;
+        }
+
+        // 썸네일 프레임 캡처
+        async function captureThumbnailFrame() {
+            return new Promise((resolve) => {
+                const size = thumbnailState.size;
+                const videoWidth = videoPlayer.videoWidth;
+                const videoHeight = videoPlayer.videoHeight;
+                const aspectRatio = videoWidth / videoHeight;
+
+                // 썸네일 캔버스 크기 계산 (종횡비 유지)
+                let thumbWidth, thumbHeight;
+                if (aspectRatio > 1) {
+                    // 가로가 더 긴 경우
+                    thumbWidth = size;
+                    thumbHeight = Math.round(size / aspectRatio);
+                } else {
+                    // 세로가 더 긴 경우
+                    thumbWidth = Math.round(size * aspectRatio);
+                    thumbHeight = size;
+                }
+
+                canvas.width = thumbWidth;
+                canvas.height = thumbHeight;
+
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                // 필터 적용
+                ctx.filter = getCurrentFilterString();
+                ctx.drawImage(videoPlayer, 0, 0, thumbWidth, thumbHeight);
+                ctx.filter = 'none';
+
+                // 타임스탬프 추가 (옵션이 활성화된 경우)
+                if (document.getElementById('showTimestamp').checked) {
+                    const timestamp = formatTime(videoPlayer.currentTime);
+                    const fontSize = Math.max(12, Math.round(thumbHeight / 15));
+
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+
+                    const padding = 5;
+                    const textMetrics = ctx.measureText(timestamp);
+                    const textWidth = textMetrics.width;
+                    const textHeight = fontSize;
+
+                    // 배경
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(
+                        thumbWidth - textWidth - padding * 2,
+                        thumbHeight - textHeight - padding * 2,
+                        textWidth + padding * 2,
+                        textHeight + padding * 2
+                    );
+
+                    // 텍스트
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(timestamp, thumbWidth - padding, thumbHeight - padding);
+                }
+
+                // Blob 생성
+                const mimeType = thumbnailState.format === 'png' ? 'image/png' : 'image/jpeg';
+                canvas.toBlob((blob) => {
+                    resolve({
+                        blob: blob,
+                        timestamp: videoPlayer.currentTime,
+                        index: thumbnailState.currentIndex
+                    });
+                }, mimeType, 0.95);
+            });
+        }
+
+        // 썸네일 생성 완료
+        async function finishThumbnailGeneration() {
+            const outputMode = thumbnailState.outputMode;
+            const format = thumbnailState.format;
+            const count = thumbnailState.totalCount;
+
+            if (outputMode === 'grid') {
+                // 그리드 이미지 생성
+                await createThumbnailGrid();
+            } else {
+                // 개별 이미지 저장
+                await saveThumbnailsIndividually();
+            }
+
+            // 원래 재생 위치로 복원
+            videoPlayer.currentTime = thumbnailState.originalTime;
+            thumbnailState.isRunning = false;
+
+            updateProgress(1);
+            showStatus(`썸네일 ${count}개 생성 완료!`, 'success');
+        }
+
+        // 그리드 이미지 생성
+        async function createThumbnailGrid() {
+            const count = thumbnailState.totalCount;
+            const size = thumbnailState.size;
+
+            // 그리드 레이아웃 계산
+            let cols, rows;
+            switch (count) {
+                case 4:
+                    cols = 2; rows = 2;
+                    break;
+                case 6:
+                    cols = 3; rows = 2;
+                    break;
+                case 9:
+                    cols = 3; rows = 3;
+                    break;
+                case 12:
+                    cols = 4; rows = 3;
+                    break;
+                case 16:
+                    cols = 4; rows = 4;
+                    break;
+                default:
+                    cols = Math.ceil(Math.sqrt(count));
+                    rows = Math.ceil(count / cols);
+            }
+
+            const padding = 10;
+            const videoWidth = videoPlayer.videoWidth;
+            const videoHeight = videoPlayer.videoHeight;
+            const aspectRatio = videoWidth / videoHeight;
+
+            // 개별 썸네일 크기
+            let thumbWidth, thumbHeight;
+            if (aspectRatio > 1) {
+                thumbWidth = size;
+                thumbHeight = Math.round(size / aspectRatio);
+            } else {
+                thumbWidth = Math.round(size * aspectRatio);
+                thumbHeight = size;
+            }
+
+            // 그리드 캔버스 크기
+            const gridWidth = cols * thumbWidth + (cols + 1) * padding;
+            const gridHeight = rows * thumbHeight + (rows + 1) * padding;
+
+            canvas.width = gridWidth;
+            canvas.height = gridHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, gridWidth, gridHeight);
+
+            // 각 썸네일을 그리드에 배치
+            for (let i = 0; i < thumbnailState.thumbnails.length; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = padding + col * (thumbWidth + padding);
+                const y = padding + row * (thumbHeight + padding);
+
+                // 썸네일 이미지 로드 및 그리기
+                const img = await createImageFromBlob(thumbnailState.thumbnails[i].blob);
+                ctx.drawImage(img, x, y, thumbWidth, thumbHeight);
+            }
+
+            // 그리드 이미지 저장
+            const mimeType = thumbnailState.format === 'png' ? 'image/png' : 'image/jpeg';
+            canvas.toBlob(async (blob) => {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const filename = `thumbnails_grid_${count}_${timestamp}.${thumbnailState.format}`;
+                await saveFile(blob, filename);
+            }, mimeType, 0.95);
+        }
+
+        // Blob에서 Image 생성
+        function createImageFromBlob(blob) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(img.src);
+                    resolve(img);
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        // 썸네일 개별 저장
+        async function saveThumbnailsIndividually() {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+
+            for (let i = 0; i < thumbnailState.thumbnails.length; i++) {
+                const thumbData = thumbnailState.thumbnails[i];
+                const paddedIndex = String(i + 1).padStart(3, '0');
+                const filename = `thumbnail_${paddedIndex}_${timestamp}.${thumbnailState.format}`;
+
+                await saveFile(thumbData.blob, filename);
+
+                // 저장 사이에 약간의 지연 (브라우저 과부하 방지)
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        // 역재생 옵션 표시
+        function showReverseOptions() {
+            const intervalControls = document.getElementById('intervalCaptureControls');
+            const gifControls = document.getElementById('gifControls');
+            const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
+            const reverseControls = document.getElementById('reverseControls');
+
+            intervalControls.style.display = 'none';
+            gifControls.style.display = 'none';
+            trimControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
             reverseControls.style.display = reverseControls.style.display === 'none' ? 'block' : 'none';
         }
 
