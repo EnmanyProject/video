@@ -477,7 +477,7 @@
                         </div>
 
                         <!-- 종료 핸들 -->
-                        <div id="endHandle" class="timeline-handle" style="position: absolute; right: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <div id="endHandle" class="timeline-handle" style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px;">
                             ▶
                         </div>
                     </div>
@@ -1482,17 +1482,31 @@
                 const duration = videoPlayer.duration || 10;
                 const newTime = percent * duration;
 
+                console.log(`[드래그] 마우스 위치: x=${x.toFixed(0)}, percent=${(percent*100).toFixed(1)}%, newTime=${newTime.toFixed(2)}초`);
+
                 if (trimRangeState.dragTarget === 'start') {
                     trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
-                    // 비디오 seek (준비된 경우에만)
-                    if (videoPlayer.readyState >= 2) {
+
+                    console.log(`[시작 핸들] readyState=${videoPlayer.readyState}, startTime=${trimRangeState.startTime.toFixed(2)}초`);
+
+                    // 비디오 seek (항상 실행)
+                    try {
                         videoPlayer.currentTime = trimRangeState.startTime;
+                        console.log(`[시작 핸들] ✅ 비디오 시간 변경: ${trimRangeState.startTime.toFixed(2)}초`);
+                    } catch (e) {
+                        console.error(`[시작 핸들] ❌ seek 실패:`, e);
                     }
                 } else if (trimRangeState.dragTarget === 'end') {
                     trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
-                    // 비디오 seek (준비된 경우에만)
-                    if (videoPlayer.readyState >= 2) {
+
+                    console.log(`[종료 핸들] readyState=${videoPlayer.readyState}, endTime=${trimRangeState.endTime.toFixed(2)}초`);
+
+                    // 비디오 seek (항상 실행)
+                    try {
                         videoPlayer.currentTime = trimRangeState.endTime;
+                        console.log(`[종료 핸들] ✅ 비디오 시간 변경: ${trimRangeState.endTime.toFixed(2)}초`);
+                    } catch (e) {
+                        console.error(`[종료 핸들] ❌ seek 실패:`, e);
                     }
                 }
 
