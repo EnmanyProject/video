@@ -272,6 +272,22 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
         }
 
+        /* 타임라인 핸들 스타일 */
+        .timeline-handle {
+            transition: all 0.2s ease;
+        }
+
+        .timeline-handle:hover {
+            background: #45a049 !important;
+            transform: scaleX(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        }
+
+        .timeline-handle:active {
+            background: #3d8b40 !important;
+            transform: scaleX(1.05);
+        }
+
         .gif-controls {
             background: #f8f9fa;
             padding: 20px;
@@ -439,23 +455,8 @@
                 </div>
                 <canvas id="canvas"></canvas>
 
-                <!-- 재생속도 조절 -->
-                <div class="playback-speed-control">
-                    <label for="playbackSpeed">⚡ 재생 속도:</label>
-                    <select id="playbackSpeed" onchange="changePlaybackSpeed()">
-                        <option value="0.25">0.25x</option>
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1" selected>1x (기본)</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="1.75">1.75x</option>
-                        <option value="2">2x</option>
-                    </select>
-                </div>
-
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
-                <div id="timelineRangeSelector" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div id="timelineRangeSelector" style="display: none; margin-top: 5px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 style="margin: 0; color: #333;">✂️ 구간 선택</h4>
                         <button class="btn" onclick="closeTrimMode()" style="padding: 5px 15px; font-size: 12px;">닫기</button>
@@ -471,12 +472,12 @@
                         <div id="selectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
 
                         <!-- 시작 핸들 -->
-                        <div id="startHandle" style="position: absolute; left: 0; top: 0; width: 20px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; user-select: none; z-index: 10;">
+                        <div id="startHandle" class="timeline-handle" style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                             ◀
                         </div>
 
                         <!-- 종료 핸들 -->
-                        <div id="endHandle" style="position: absolute; right: 0; top: 0; width: 20px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; user-select: none; z-index: 10;">
+                        <div id="endHandle" class="timeline-handle" style="position: absolute; right: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                             ▶
                         </div>
                     </div>
@@ -541,6 +542,21 @@
                 <button class="btn" onclick="toggleTextOptions()" id="textToggleBtn" disabled style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                     ✏️ 텍스트 추가 ▼
                 </button>
+            </div>
+
+            <!-- 재생속도 조절 -->
+            <div class="playback-speed-control" style="margin-top: 10px;">
+                <label for="playbackSpeed">⚡ 재생 속도:</label>
+                <select id="playbackSpeed" onchange="changePlaybackSpeed()">
+                    <option value="0.25">0.25x</option>
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x (기본)</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="1.75">1.75x</option>
+                    <option value="2">2x</option>
+                </select>
             </div>
 
             <!-- 필터 조절 옵션 -->
