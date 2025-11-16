@@ -472,12 +472,12 @@
                         <div id="selectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
 
                         <!-- 시작 핸들 -->
-                        <div id="startHandle" class="timeline-handle" style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <div id="startHandle" class="timeline-handle" onmousedown="handleDragStart(event, 'start')" style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
                             ◀
                         </div>
 
                         <!-- 종료 핸들 -->
-                        <div id="endHandle" class="timeline-handle" style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px;">
+                        <div id="endHandle" class="timeline-handle" onmousedown="handleDragStart(event, 'end')" style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px;">
                             ▶
                         </div>
                     </div>
@@ -1451,33 +1451,18 @@
                 formatTime(trimRangeState.endTime - trimRangeState.startTime);
         }
 
+        // 전역 드래그 시작 함수 (HTML에서 직접 호출)
+        function handleDragStart(e, target) {
+            e.preventDefault();
+            console.log(`🖱️ ${target} 핸들 mousedown! (직접 호출)`);
+            trimRangeState.isDragging = true;
+            trimRangeState.dragTarget = target;
+            console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
+        }
+
         // 드래그 기능 설정
         function setupTimelineDrag() {
-            const startHandle = document.getElementById('startHandle');
-            const endHandle = document.getElementById('endHandle');
-            const container = document.getElementById('timelineContainer');
-
-            console.log('🔧 setupTimelineDrag 호출됨');
-            console.log('startHandle:', startHandle);
-            console.log('endHandle:', endHandle);
-
-            // 시작 핸들 드래그
-            startHandle.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                console.log('🖱️ 시작 핸들 mousedown!');
-                trimRangeState.isDragging = true;
-                trimRangeState.dragTarget = 'start';
-                console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
-            });
-
-            // 종료 핸들 드래그
-            endHandle.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                console.log('🖱️ 종료 핸들 mousedown!');
-                trimRangeState.isDragging = true;
-                trimRangeState.dragTarget = 'end';
-                console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
-            });
+            console.log('🔧 setupTimelineDrag 호출됨 (이제 mousemove/mouseup만 등록)');
 
             // 마우스 이동
             let mouseMoveHandler = (e) => {
