@@ -725,19 +725,35 @@
             <!-- GIF 옵션 -->
             <div class="gif-controls" id="gifControls" style="display: none;">
                 <h3>GIF 생성 옵션</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                    💡 현재 위치: <span id="currentTimeDisplay">0:00</span>에서 시작합니다
-                </p>
+
+                <!-- 타임라인 범위 선택 (GIF) -->
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                        📊 GIF 구간 선택: <span id="gifRangeTimeDisplay">0:00 ~ 0:03</span> (길이: <span id="gifRangeDurationDisplay">0:03</span>)
+                    </p>
+                    <div id="gifTimelineContainer" style="position: relative; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
+                        <!-- 선택된 범위 하이라이트 -->
+                        <div id="gifSelectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
+
+                        <!-- 시작 핸들 -->
+                        <div id="gifStartHandle" class="timeline-handle"
+                             onmousedown="handleGifDragStart(event, 'start')"
+                             ontouchstart="handleGifTouchStart(event, 'start')"
+                             style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
+                            ◀
+                        </div>
+
+                        <!-- 종료 핸들 -->
+                        <div id="gifEndHandle" class="timeline-handle"
+                             onmousedown="handleGifDragStart(event, 'end')"
+                             ontouchstart="handleGifTouchStart(event, 'end')"
+                             style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
+                            ▶
+                        </div>
+                    </div>
+                </div>
+
                 <div class="gif-options">
-                    <label>
-                        시작 시간 (초)
-                        <input type="number" id="gifStartTime" value="0" min="0" step="0.1" oninput="validateGifTiming()">
-                        <small style="color: #666;">비디오 멈춘 위치에서 자동 설정됨</small>
-                    </label>
-                    <label>
-                        지속 시간 (초)
-                        <input type="number" id="gifDuration" value="3" min="0.5" max="10" step="0.5" oninput="validateGifTiming()">
-                    </label>
                     <label>
                         프레임 레이트 (fps)
                         <input type="number" id="gifFps" value="10" min="5" max="30" step="5">
@@ -1306,19 +1322,8 @@
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
             if (gifControls.style.display === 'block') {
-                // 현재 비디오 위치를 시작 시간으로 자동 설정
-                const currentTime = videoPlayer.currentTime;
-                document.getElementById('gifStartTime').value = currentTime.toFixed(1);
-                document.getElementById('gifStartTime').max = videoPlayer.duration;
-
-                // 현재 위치 표시 업데이트
-                const mins = Math.floor(currentTime / 60);
-                const secs = Math.floor(currentTime % 60);
-                const timeText = `${mins}:${String(secs).padStart(2, '0')}`;
-                document.getElementById('currentTimeDisplay').textContent = timeText;
-
-                // 지속 시간이 비디오 끝을 넘지 않도록 조정
-                validateGifTiming();
+                // GIF 타임라인 초기화
+                initializeGifTimeline();
             }
         }
 
@@ -1364,10 +1369,20 @@
                 `${duration.toFixed(1)}초`;
         }
 
-        // 통합 타임라인 범위 선택 상태
+        // 통합 타임라인 범위 선택 상태 (구간 잘라내기)
         let trimRangeState = {
             startTime: 0,
             endTime: 10,
+            isDragging: false,
+            dragTarget: null,
+            containerWidth: 0,
+            dragListenersInitialized: false
+        };
+
+        // GIF 타임라인 범위 선택 상태
+        let gifRangeState = {
+            startTime: 0,
+            endTime: 3,
             isDragging: false,
             dragTarget: null,
             containerWidth: 0,
@@ -1534,6 +1549,142 @@
             let touchEndHandler = () => {
                 trimRangeState.isDragging = false;
                 trimRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('touchend', touchEndHandler);
+            document.addEventListener('touchcancel', touchEndHandler);
+        }
+
+        // ===== GIF 타임라인 드래그 기능 =====
+
+        // GIF 드래그 시작 함수
+        function handleGifDragStart(e, target) {
+            e.preventDefault();
+            gifRangeState.isDragging = true;
+            gifRangeState.dragTarget = target;
+        }
+
+        // GIF 터치 시작 함수
+        function handleGifTouchStart(e, target) {
+            handleGifDragStart(e, target);
+        }
+
+        // GIF 타임라인 초기화
+        function initializeGifTimeline() {
+            const duration = videoPlayer.duration || 10;
+            gifRangeState.startTime = 0;
+            gifRangeState.endTime = Math.min(3, duration);
+
+            // 타임라인 컨테이너의 너비를 비디오 플레이어와 동일하게 설정
+            const timelineContainer = document.getElementById('gifTimelineContainer');
+            const videoWidth = videoPlayer.offsetWidth;
+            timelineContainer.style.width = `${videoWidth}px`;
+            gifRangeState.containerWidth = videoWidth;
+
+            updateGifTimelineDisplay();
+
+            // 드래그 리스너는 한 번만 초기화
+            if (!gifRangeState.dragListenersInitialized) {
+                setupGifTimelineDrag();
+                gifRangeState.dragListenersInitialized = true;
+            }
+        }
+
+        // GIF 타임라인 표시 업데이트
+        function updateGifTimelineDisplay() {
+            const duration = videoPlayer.duration || 10;
+
+            const startPercent = (gifRangeState.startTime / duration) * 100;
+            const endPercent = (gifRangeState.endTime / duration) * 100;
+
+            // 핸들 위치 업데이트
+            const startHandle = document.getElementById('gifStartHandle');
+            const endHandle = document.getElementById('gifEndHandle');
+            const selectedRange = document.getElementById('gifSelectedRange');
+
+            startHandle.style.left = startPercent + '%';
+            endHandle.style.left = endPercent + '%';
+
+            selectedRange.style.left = startPercent + '%';
+            selectedRange.style.width = (endPercent - startPercent) + '%';
+
+            // 시간 텍스트 업데이트
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+
+            document.getElementById('gifRangeTimeDisplay').textContent =
+                `${formatTime(gifRangeState.startTime)} ~ ${formatTime(gifRangeState.endTime)}`;
+            document.getElementById('gifRangeDurationDisplay').textContent =
+                formatTime(gifRangeState.endTime - gifRangeState.startTime);
+        }
+
+        // GIF 드래그 기능 설정
+        function setupGifTimelineDrag() {
+            // 마우스 이동
+            let mouseMoveHandler = (e) => {
+                if (!gifRangeState.isDragging) return;
+
+                const container = document.getElementById('gifTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (gifRangeState.dragTarget === 'start') {
+                    gifRangeState.startTime = Math.min(newTime, gifRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = gifRangeState.startTime;
+                } else if (gifRangeState.dragTarget === 'end') {
+                    gifRangeState.endTime = Math.max(newTime, gifRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = gifRangeState.endTime;
+                }
+
+                updateGifTimelineDisplay();
+            };
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+
+            // 터치 이동 핸들러
+            let touchMoveHandler = (e) => {
+                if (!gifRangeState.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const container = document.getElementById('gifTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (gifRangeState.dragTarget === 'start') {
+                    gifRangeState.startTime = Math.min(newTime, gifRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = gifRangeState.startTime;
+                } else if (gifRangeState.dragTarget === 'end') {
+                    gifRangeState.endTime = Math.max(newTime, gifRangeState.endTime + 0.5);
+                    videoPlayer.currentTime = gifRangeState.endTime;
+                }
+
+                updateGifTimelineDisplay();
+            };
+
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+
+            // 마우스 업
+            let mouseUpHandler = () => {
+                gifRangeState.isDragging = false;
+                gifRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('mouseup', mouseUpHandler);
+
+            // 터치 종료
+            let touchEndHandler = () => {
+                gifRangeState.isDragging = false;
+                gifRangeState.dragTarget = null;
             };
 
             document.addEventListener('touchend', touchEndHandler);
@@ -2394,11 +2545,11 @@
 
         // GIF 생성
         async function generateGif() {
-            // 유효성 검사 및 자동 조정
-            validateGifTiming();
+            // 타임라인에서 시간 값 가져오기
+            const startTime = gifRangeState.startTime;
+            const endTime = gifRangeState.endTime;
+            const duration = endTime - startTime;
 
-            const startTime = parseFloat(document.getElementById('gifStartTime').value);
-            const duration = parseFloat(document.getElementById('gifDuration').value);
             const fps = parseInt(document.getElementById('gifFps').value);
             const width = parseInt(document.getElementById('gifWidth').value);
             const quality = parseInt(document.getElementById('gifQuality').value);
