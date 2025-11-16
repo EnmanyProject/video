@@ -472,12 +472,18 @@
                         <div id="selectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
 
                         <!-- 시작 핸들 -->
-                        <div id="startHandle" class="timeline-handle" onmousedown="handleDragStart(event, 'start')" style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <div id="startHandle" class="timeline-handle"
+                             onmousedown="handleDragStart(event, 'start')"
+                             ontouchstart="handleTouchStart(event, 'start')"
+                             style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
                             ◀
                         </div>
 
                         <!-- 종료 핸들 -->
-                        <div id="endHandle" class="timeline-handle" onmousedown="handleDragStart(event, 'end')" style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px;">
+                        <div id="endHandle" class="timeline-handle"
+                             onmousedown="handleDragStart(event, 'end')"
+                             ontouchstart="handleTouchStart(event, 'end')"
+                             style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
                             ▶
                         </div>
                     </div>
@@ -1454,10 +1460,15 @@
         // 전역 드래그 시작 함수 (HTML에서 직접 호출)
         function handleDragStart(e, target) {
             e.preventDefault();
-            console.log(`🖱️ ${target} 핸들 mousedown! (직접 호출)`);
+            console.log(`🖱️ ${target} 핸들 드래그 시작! (직접 호출)`);
             trimRangeState.isDragging = true;
             trimRangeState.dragTarget = target;
             console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
+        }
+
+        // 터치 이벤트도 같은 함수 사용
+        function handleTouchStart(e, target) {
+            handleDragStart(e, target);
         }
 
         // 드래그 기능 설정
@@ -1509,6 +1520,45 @@
             document.addEventListener('mousemove', mouseMoveHandler);
             console.log('✅ mousemove 리스너 등록됨');
 
+            // 터치 이동 핸들러
+            let touchMoveHandler = (e) => {
+                if (!trimRangeState.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const container = document.getElementById('timelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                console.log(`[터치 드래그] 위치: x=${x.toFixed(0)}, percent=${(percent*100).toFixed(1)}%, newTime=${newTime.toFixed(2)}초`);
+
+                if (trimRangeState.dragTarget === 'start') {
+                    trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
+                    try {
+                        videoPlayer.currentTime = trimRangeState.startTime;
+                        console.log(`[시작 핸들] ✅ 비디오 시간 변경: ${trimRangeState.startTime.toFixed(2)}초`);
+                    } catch (e) {
+                        console.error(`[시작 핸들] ❌ seek 실패:`, e);
+                    }
+                } else if (trimRangeState.dragTarget === 'end') {
+                    trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
+                    try {
+                        videoPlayer.currentTime = trimRangeState.endTime;
+                        console.log(`[종료 핸들] ✅ 비디오 시간 변경: ${trimRangeState.endTime.toFixed(2)}초`);
+                    } catch (e) {
+                        console.error(`[종료 핸들] ❌ seek 실패:`, e);
+                    }
+                }
+
+                updateTimelineDisplay();
+            };
+
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+            console.log('✅ touchmove 리스너 등록됨');
+
             // 마우스 업
             let mouseUpHandler = () => {
                 if (trimRangeState.isDragging) {
@@ -1520,6 +1570,19 @@
 
             document.addEventListener('mouseup', mouseUpHandler);
             console.log('✅ mouseup 리스너 등록됨');
+
+            // 터치 종료
+            let touchEndHandler = () => {
+                if (trimRangeState.isDragging) {
+                    console.log('👆 touchend - 터치 드래그 종료');
+                }
+                trimRangeState.isDragging = false;
+                trimRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('touchend', touchEndHandler);
+            document.addEventListener('touchcancel', touchEndHandler);
+            console.log('✅ touchend 리스너 등록됨');
         }
 
         // 통합 타임라인에서 구간 잘라내기 실행
