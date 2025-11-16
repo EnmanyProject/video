@@ -370,6 +370,29 @@
                 width: 100%;
             }
         }
+
+        /* 저장 알림 애니메이션 */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+        }
     </style>
 </head>
 <body>
@@ -857,6 +880,10 @@
 
         // 파일을 선택된 폴더 또는 다운로드로 저장
         async function saveFile(blob, filename) {
+            const fileSizeKB = (blob.size / 1024).toFixed(1);
+            const fileSizeMB = (blob.size / 1024 / 1024).toFixed(2);
+            const sizeText = blob.size > 1024 * 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`;
+
             if (saveFolderHandle) {
                 try {
                     // 선택된 폴더에 저장
@@ -864,7 +891,11 @@
                     const writable = await fileHandle.createWritable();
                     await writable.write(blob);
                     await writable.close();
-                    showStatus(`${filename}이(가) ${saveFolderHandle.name} 폴더에 저장되었습니다.`, 'success');
+
+                    // 성공 메시지 표시
+                    const message = `✅ 저장 완료!\n파일: ${filename}\n크기: ${sizeText}\n위치: ${saveFolderHandle.name} 폴더`;
+                    showStatus(message, 'success');
+                    showSaveNotification(filename, sizeText, `${saveFolderHandle.name} 폴더`);
                 } catch (err) {
                     console.error('파일 저장 오류:', err);
                     // 실패 시 기본 다운로드로 전환
@@ -884,7 +915,60 @@
             a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
-            showStatus(`${filename}이(가) 다운로드되었습니다.`, 'success');
+
+            // 파일 크기 계산
+            const fileSizeKB = (blob.size / 1024).toFixed(1);
+            const fileSizeMB = (blob.size / 1024 / 1024).toFixed(2);
+            const sizeText = blob.size > 1024 * 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`;
+
+            // 성공 메시지 표시
+            const message = `✅ 다운로드 완료!\n파일: ${filename}\n크기: ${sizeText}\n위치: 다운로드 폴더`;
+            showStatus(message, 'success');
+            showSaveNotification(filename, sizeText, '다운로드 폴더');
+        }
+
+        // 저장 완료 알림 (큰 팝업)
+        function showSaveNotification(filename, fileSize, location) {
+            // 기존 알림 제거
+            const existing = document.getElementById('saveNotification');
+            if (existing) {
+                existing.remove();
+            }
+
+            // 알림 생성
+            const notification = document.createElement('div');
+            notification.id = 'saveNotification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 30px 40px;
+                border-radius: 15px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                z-index: 10000;
+                text-align: center;
+                min-width: 400px;
+                animation: slideIn 0.3s ease-out;
+            `;
+
+            notification.innerHTML = `
+                <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+                <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">저장 완료!</div>
+                <div style="font-size: 16px; opacity: 0.9; margin-bottom: 5px;">📄 ${filename}</div>
+                <div style="font-size: 14px; opacity: 0.8; margin-bottom: 5px;">📦 크기: ${fileSize}</div>
+                <div style="font-size: 14px; opacity: 0.8;">📁 위치: ${location}</div>
+            `;
+
+            document.body.appendChild(notification);
+
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
 
         // 현재 프레임 캡처
