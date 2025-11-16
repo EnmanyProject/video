@@ -1460,10 +1460,8 @@
         // 전역 드래그 시작 함수 (HTML에서 직접 호출)
         function handleDragStart(e, target) {
             e.preventDefault();
-            console.log(`🖱️ ${target} 핸들 드래그 시작! (직접 호출)`);
             trimRangeState.isDragging = true;
             trimRangeState.dragTarget = target;
-            console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
         }
 
         // 터치 이벤트도 같은 함수 사용
@@ -1473,7 +1471,6 @@
 
         // 드래그 기능 설정
         function setupTimelineDrag() {
-            console.log('🔧 setupTimelineDrag 호출됨 (이제 mousemove/mouseup만 등록)');
 
             // 마우스 이동
             let mouseMoveHandler = (e) => {
@@ -1486,39 +1483,18 @@
                 const duration = videoPlayer.duration || 10;
                 const newTime = percent * duration;
 
-                console.log(`[드래그] 마우스 위치: x=${x.toFixed(0)}, percent=${(percent*100).toFixed(1)}%, newTime=${newTime.toFixed(2)}초`);
-
                 if (trimRangeState.dragTarget === 'start') {
                     trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
-
-                    console.log(`[시작 핸들] readyState=${videoPlayer.readyState}, startTime=${trimRangeState.startTime.toFixed(2)}초`);
-
-                    // 비디오 seek (항상 실행)
-                    try {
-                        videoPlayer.currentTime = trimRangeState.startTime;
-                        console.log(`[시작 핸들] ✅ 비디오 시간 변경: ${trimRangeState.startTime.toFixed(2)}초`);
-                    } catch (e) {
-                        console.error(`[시작 핸들] ❌ seek 실패:`, e);
-                    }
+                    videoPlayer.currentTime = trimRangeState.startTime;
                 } else if (trimRangeState.dragTarget === 'end') {
                     trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
-
-                    console.log(`[종료 핸들] readyState=${videoPlayer.readyState}, endTime=${trimRangeState.endTime.toFixed(2)}초`);
-
-                    // 비디오 seek (항상 실행)
-                    try {
-                        videoPlayer.currentTime = trimRangeState.endTime;
-                        console.log(`[종료 핸들] ✅ 비디오 시간 변경: ${trimRangeState.endTime.toFixed(2)}초`);
-                    } catch (e) {
-                        console.error(`[종료 핸들] ❌ seek 실패:`, e);
-                    }
+                    videoPlayer.currentTime = trimRangeState.endTime;
                 }
 
                 updateTimelineDisplay();
             };
 
             document.addEventListener('mousemove', mouseMoveHandler);
-            console.log('✅ mousemove 리스너 등록됨');
 
             // 터치 이동 핸들러
             let touchMoveHandler = (e) => {
@@ -1533,56 +1509,35 @@
                 const duration = videoPlayer.duration || 10;
                 const newTime = percent * duration;
 
-                console.log(`[터치 드래그] 위치: x=${x.toFixed(0)}, percent=${(percent*100).toFixed(1)}%, newTime=${newTime.toFixed(2)}초`);
-
                 if (trimRangeState.dragTarget === 'start') {
                     trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
-                    try {
-                        videoPlayer.currentTime = trimRangeState.startTime;
-                        console.log(`[시작 핸들] ✅ 비디오 시간 변경: ${trimRangeState.startTime.toFixed(2)}초`);
-                    } catch (e) {
-                        console.error(`[시작 핸들] ❌ seek 실패:`, e);
-                    }
+                    videoPlayer.currentTime = trimRangeState.startTime;
                 } else if (trimRangeState.dragTarget === 'end') {
                     trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
-                    try {
-                        videoPlayer.currentTime = trimRangeState.endTime;
-                        console.log(`[종료 핸들] ✅ 비디오 시간 변경: ${trimRangeState.endTime.toFixed(2)}초`);
-                    } catch (e) {
-                        console.error(`[종료 핸들] ❌ seek 실패:`, e);
-                    }
+                    videoPlayer.currentTime = trimRangeState.endTime;
                 }
 
                 updateTimelineDisplay();
             };
 
             document.addEventListener('touchmove', touchMoveHandler, { passive: false });
-            console.log('✅ touchmove 리스너 등록됨');
 
             // 마우스 업
             let mouseUpHandler = () => {
-                if (trimRangeState.isDragging) {
-                    console.log('🖱️ mouseup - 드래그 종료');
-                }
                 trimRangeState.isDragging = false;
                 trimRangeState.dragTarget = null;
             };
 
             document.addEventListener('mouseup', mouseUpHandler);
-            console.log('✅ mouseup 리스너 등록됨');
 
             // 터치 종료
             let touchEndHandler = () => {
-                if (trimRangeState.isDragging) {
-                    console.log('👆 touchend - 터치 드래그 종료');
-                }
                 trimRangeState.isDragging = false;
                 trimRangeState.dragTarget = null;
             };
 
             document.addEventListener('touchend', touchEndHandler);
             document.addEventListener('touchcancel', touchEndHandler);
-            console.log('✅ touchend 리스너 등록됨');
         }
 
         // 통합 타임라인에서 구간 잘라내기 실행
