@@ -1457,22 +1457,30 @@
             const endHandle = document.getElementById('endHandle');
             const container = document.getElementById('timelineContainer');
 
+            console.log('🔧 setupTimelineDrag 호출됨');
+            console.log('startHandle:', startHandle);
+            console.log('endHandle:', endHandle);
+
             // 시작 핸들 드래그
             startHandle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
+                console.log('🖱️ 시작 핸들 mousedown!');
                 trimRangeState.isDragging = true;
                 trimRangeState.dragTarget = 'start';
+                console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
             });
 
             // 종료 핸들 드래그
             endHandle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
+                console.log('🖱️ 종료 핸들 mousedown!');
                 trimRangeState.isDragging = true;
                 trimRangeState.dragTarget = 'end';
+                console.log('isDragging:', trimRangeState.isDragging, 'dragTarget:', trimRangeState.dragTarget);
             });
 
             // 마우스 이동
-            document.addEventListener('mousemove', (e) => {
+            let mouseMoveHandler = (e) => {
                 if (!trimRangeState.isDragging) return;
 
                 const container = document.getElementById('timelineContainer');
@@ -1511,13 +1519,22 @@
                 }
 
                 updateTimelineDisplay();
-            });
+            };
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+            console.log('✅ mousemove 리스너 등록됨');
 
             // 마우스 업
-            document.addEventListener('mouseup', () => {
+            let mouseUpHandler = () => {
+                if (trimRangeState.isDragging) {
+                    console.log('🖱️ mouseup - 드래그 종료');
+                }
                 trimRangeState.isDragging = false;
                 trimRangeState.dragTarget = null;
-            });
+            };
+
+            document.addEventListener('mouseup', mouseUpHandler);
+            console.log('✅ mouseup 리스너 등록됨');
         }
 
         // 통합 타임라인에서 구간 잘라내기 실행
