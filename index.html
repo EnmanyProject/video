@@ -642,12 +642,12 @@
                 <div class="gif-options">
                     <label>
                         시작 시간 (초)
-                        <input type="number" id="gifStartTime" value="0" min="0" step="0.1">
+                        <input type="number" id="gifStartTime" value="0" min="0" step="0.1" oninput="validateGifTiming()">
                         <small style="color: #666;">비디오 멈춘 위치에서 자동 설정됨</small>
                     </label>
                     <label>
                         지속 시간 (초)
-                        <input type="number" id="gifDuration" value="3" min="0.5" max="10" step="0.5">
+                        <input type="number" id="gifDuration" value="3" min="0.5" max="10" step="0.5" oninput="validateGifTiming()">
                     </label>
                     <label>
                         프레임 레이트 (fps)
@@ -1145,6 +1145,29 @@
         }
 
         // GIF 옵션 표시
+        // GIF 타이밍 유효성 검사 및 자동 조정
+        function validateGifTiming() {
+            if (!videoPlayer.duration) return;
+
+            const startTimeInput = document.getElementById('gifStartTime');
+            const durationInput = document.getElementById('gifDuration');
+
+            let startTime = parseFloat(startTimeInput.value) || 0;
+            let duration = parseFloat(durationInput.value) || 0.5;
+
+            // 시작 시간이 비디오 길이를 초과하면 조정
+            if (startTime > videoPlayer.duration) {
+                startTime = Math.max(0, videoPlayer.duration - 1);
+                startTimeInput.value = startTime.toFixed(1);
+            }
+
+            // 시작 시간 + 지속 시간이 비디오 길이를 초과하면 지속 시간 자동 조정
+            if (startTime + duration > videoPlayer.duration) {
+                const maxDuration = Math.max(0.5, videoPlayer.duration - startTime);
+                durationInput.value = maxDuration.toFixed(1);
+            }
+        }
+
         function showGifOptions() {
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
@@ -1171,11 +1194,7 @@
                 document.getElementById('currentTimeDisplay').textContent = timeText;
 
                 // 지속 시간이 비디오 끝을 넘지 않도록 조정
-                const duration = parseFloat(document.getElementById('gifDuration').value);
-                if (currentTime + duration > videoPlayer.duration) {
-                    const maxDuration = Math.max(0.5, videoPlayer.duration - currentTime);
-                    document.getElementById('gifDuration').value = maxDuration.toFixed(1);
-                }
+                validateGifTiming();
             }
         }
 
@@ -1966,16 +1985,14 @@
 
         // GIF 생성
         async function generateGif() {
+            // 유효성 검사 및 자동 조정
+            validateGifTiming();
+
             const startTime = parseFloat(document.getElementById('gifStartTime').value);
             const duration = parseFloat(document.getElementById('gifDuration').value);
             const fps = parseInt(document.getElementById('gifFps').value);
             const width = parseInt(document.getElementById('gifWidth').value);
             const quality = parseInt(document.getElementById('gifQuality').value);
-
-            if (startTime + duration > videoPlayer.duration) {
-                showStatus('시작 시간 + 지속 시간이 비디오 길이를 초과합니다.', 'error');
-                return;
-            }
 
             // 품질 정보 포함한 상태 메시지
             const qualityText = quality === 1 ? '최고' : quality === 5 ? '높음' : quality === 10 ? '보통' : quality === 15 ? '낮음' : '최소';
