@@ -452,6 +452,59 @@
                         <option value="2">2x</option>
                     </select>
                 </div>
+
+                <!-- 타임라인 범위 선택 (구간 잘라내기) -->
+                <div id="timelineRangeSelector" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="margin: 0; color: #333;">✂️ 구간 선택</h4>
+                        <button class="btn" onclick="closeTrimMode()" style="padding: 5px 15px; font-size: 12px;">닫기</button>
+                    </div>
+                    <div style="color: #666; font-size: 14px; margin-bottom: 10px;">
+                        선택 구간: <span id="rangeTimeDisplay" style="font-weight: bold; color: #4CAF50;">0:00 ~ 0:00</span>
+                        (길이: <span id="rangeDurationDisplay" style="font-weight: bold; color: #2196F3;">0:00</span>)
+                    </div>
+
+                    <!-- 타임라인 바 -->
+                    <div id="timelineContainer" style="position: relative; width: 100%; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
+                        <!-- 선택된 범위 하이라이트 -->
+                        <div id="selectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
+
+                        <!-- 시작 핸들 -->
+                        <div id="startHandle" style="position: absolute; left: 0; top: 0; width: 20px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; user-select: none; z-index: 10;">
+                            ◀
+                        </div>
+
+                        <!-- 종료 핸들 -->
+                        <div id="endHandle" style="position: absolute; right: 0; top: 0; width: 20px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; user-select: none; z-index: 10;">
+                            ▶
+                        </div>
+                    </div>
+
+                    <!-- 옵션 -->
+                    <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <label style="display: flex; flex-direction: column;">
+                            프레임 레이트
+                            <select id="trimFpsIntegrated" style="margin-top: 5px;">
+                                <option value="24">24 fps</option>
+                                <option value="30" selected>30 fps</option>
+                                <option value="60">60 fps</option>
+                            </select>
+                        </label>
+                        <label style="display: flex; flex-direction: column;">
+                            비디오 품질
+                            <select id="trimQualityIntegrated" style="margin-top: 5px;">
+                                <option value="10000000">최고 (10 Mbps)</option>
+                                <option value="8000000" selected>고품질 (8 Mbps)</option>
+                                <option value="5000000">중간 (5 Mbps)</option>
+                                <option value="3000000">낮음 (3 Mbps)</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <button class="btn" onclick="startTrimVideoIntegrated()" style="margin-top: 15px; width: 100%;">
+                        ✨ 선택한 구간 잘라내기
+                    </button>
+                </div>
             </div>
 
             <!-- 컨트롤 버튼 -->
@@ -1288,32 +1341,223 @@
                 `${duration.toFixed(1)}초`;
         }
 
-        // 트림 옵션 표시
+        // 통합 타임라인 범위 선택 상태
+        let trimRangeState = {
+            startTime: 0,
+            endTime: 10,
+            isDragging: false,
+            dragTarget: null,
+            containerWidth: 0
+        };
+
+        // 트림 옵션 표시 (통합 타임라인)
         function showTrimOptions() {
+            const timelineSelector = document.getElementById('timelineRangeSelector');
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
             const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
 
+            // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
+            trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
-            trimControls.style.display = trimControls.style.display === 'none' ? 'block' : 'none';
 
-            if (trimControls.style.display === 'block') {
-                const duration = videoPlayer.duration || 0;
-                document.getElementById('trimStartTime').max = duration;
-                document.getElementById('trimEndTime').max = duration;
-                document.getElementById('trimStartTimeNum').max = duration;
-                document.getElementById('trimEndTimeNum').max = duration;
+            // 통합 타임라인 토글
+            if (timelineSelector.style.display === 'none') {
+                timelineSelector.style.display = 'block';
+                initializeTimeline();
+            } else {
+                timelineSelector.style.display = 'none';
+            }
+        }
 
-                const endValue = Math.min(10, duration);
-                document.getElementById('trimEndTime').value = endValue;
-                document.getElementById('trimEndTimeNum').value = endValue;
+        // 타임라인 초기화
+        function initializeTimeline() {
+            const duration = videoPlayer.duration || 10;
+            trimRangeState.startTime = 0;
+            trimRangeState.endTime = Math.min(10, duration);
+            trimRangeState.containerWidth = document.getElementById('timelineContainer').offsetWidth;
 
-                updateTrimDisplay();
+            updateTimelineDisplay();
+            setupTimelineDrag();
+        }
+
+        // 타임라인 닫기
+        function closeTrimMode() {
+            document.getElementById('timelineRangeSelector').style.display = 'none';
+        }
+
+        // 타임라인 표시 업데이트
+        function updateTimelineDisplay() {
+            const duration = videoPlayer.duration || 10;
+            const containerWidth = trimRangeState.containerWidth;
+
+            const startPercent = (trimRangeState.startTime / duration) * 100;
+            const endPercent = (trimRangeState.endTime / duration) * 100;
+
+            // 핸들 위치 업데이트
+            const startHandle = document.getElementById('startHandle');
+            const endHandle = document.getElementById('endHandle');
+            const selectedRange = document.getElementById('selectedRange');
+
+            startHandle.style.left = startPercent + '%';
+            endHandle.style.left = endPercent + '%';
+
+            selectedRange.style.left = startPercent + '%';
+            selectedRange.style.width = (endPercent - startPercent) + '%';
+
+            // 시간 텍스트 업데이트
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+
+            document.getElementById('rangeTimeDisplay').textContent =
+                `${formatTime(trimRangeState.startTime)} ~ ${formatTime(trimRangeState.endTime)}`;
+            document.getElementById('rangeDurationDisplay').textContent =
+                formatTime(trimRangeState.endTime - trimRangeState.startTime);
+        }
+
+        // 드래그 기능 설정
+        function setupTimelineDrag() {
+            const startHandle = document.getElementById('startHandle');
+            const endHandle = document.getElementById('endHandle');
+            const container = document.getElementById('timelineContainer');
+
+            // 시작 핸들 드래그
+            startHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                trimRangeState.isDragging = true;
+                trimRangeState.dragTarget = 'start';
+            });
+
+            // 종료 핸들 드래그
+            endHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                trimRangeState.isDragging = true;
+                trimRangeState.dragTarget = 'end';
+            });
+
+            // 마우스 이동
+            document.addEventListener('mousemove', (e) => {
+                if (!trimRangeState.isDragging) return;
+
+                const container = document.getElementById('timelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (trimRangeState.dragTarget === 'start') {
+                    trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = trimRangeState.startTime;
+                } else if (trimRangeState.dragTarget === 'end') {
+                    trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = trimRangeState.endTime;
+                }
+
+                updateTimelineDisplay();
+            });
+
+            // 마우스 업
+            document.addEventListener('mouseup', () => {
+                trimRangeState.isDragging = false;
+                trimRangeState.dragTarget = null;
+            });
+        }
+
+        // 통합 타임라인에서 구간 잘라내기 실행
+        async function startTrimVideoIntegrated() {
+            // 비디오 로드 확인
+            if (!videoPlayer.src) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            if (!videoPlayer.duration || isNaN(videoPlayer.duration) || videoPlayer.duration === Infinity) {
+                showStatus('비디오가 제대로 로드되지 않았습니다. 다시 시도해주세요.', 'error');
+                return;
+            }
+
+            const startTime = trimRangeState.startTime;
+            const endTime = trimRangeState.endTime;
+            const fps = parseInt(document.getElementById('trimFpsIntegrated').value) || 30;
+            const bitrate = parseInt(document.getElementById('trimQualityIntegrated').value) || 8000000;
+
+            // 유효성 검사
+            if (startTime >= endTime) {
+                showStatus('시작 시간이 종료 시간보다 작아야 합니다.', 'error');
+                return;
+            }
+
+            const duration = endTime - startTime;
+            showStatus(`구간 잘라내기 시작 (${startTime.toFixed(1)}초 ~ ${endTime.toFixed(1)}초, ${duration.toFixed(1)}초)...`, 'warning');
+            showProgress(0);
+
+            try {
+                const stream = canvas.captureStream(fps);
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9',
+                    videoBitsPerSecond: bitrate
+                });
+
+                const chunks = [];
+                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `trimmed_${timestamp}.webm`;
+                    await saveFile(blob, filename);
+
+                    hideProgress();
+                    showStatus('구간 잘라내기가 완료되었습니다!', 'success');
+                    videoPlayer.currentTime = startTime;
+                };
+
+                canvas.width = videoPlayer.videoWidth;
+                canvas.height = videoPlayer.videoHeight;
+
+                videoPlayer.currentTime = startTime;
+
+                let frameCount = 0;
+                const totalFrames = duration * fps;
+
+                const captureFrame = () => {
+                    if (videoPlayer.currentTime >= endTime || frameCount >= totalFrames) {
+                        mediaRecorder.stop();
+                        return;
+                    }
+
+                    ctx.filter = getCurrentFilterString();
+                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+                    ctx.filter = 'none';
+
+                    frameCount++;
+                    const progress = (frameCount / totalFrames) * 100;
+                    showProgress(progress);
+
+                    videoPlayer.currentTime = startTime + (frameCount / fps);
+                    requestAnimationFrame(captureFrame);
+                };
+
+                videoPlayer.onseeked = () => {
+                    if (frameCount === 0) {
+                        mediaRecorder.start();
+                        captureFrame();
+                    }
+                };
+
+            } catch (error) {
+                hideProgress();
+                showStatus('구간 잘라내기 중 오류가 발생했습니다: ' + error.message, 'error');
+                console.error(error);
             }
         }
 
