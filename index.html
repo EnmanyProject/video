@@ -454,6 +454,31 @@
                 </div>
             </div>
 
+            <!-- 컨트롤 버튼 -->
+            <div class="controls">
+                <button class="btn btn-success" onclick="captureFrame('png')" id="capturePngBtn" disabled>
+                    📸 PNG 캡처
+                </button>
+                <button class="btn btn-success" onclick="captureFrame('jpg')" id="captureJpgBtn" disabled>
+                    📸 JPG 캡처
+                </button>
+                <button class="btn btn-secondary" onclick="showIntervalCaptureOptions()" id="intervalCaptureBtn" disabled>
+                    🎬 간격 캡처
+                </button>
+                <button class="btn btn-secondary" onclick="showGifOptions()" id="gifBtn" disabled>
+                    🎞️ GIF 생성
+                </button>
+                <button class="btn" onclick="showTrimOptions()" id="trimBtn" disabled>
+                    ✂️ 구간 잘라내기
+                </button>
+                <button class="btn btn-success" onclick="showThumbnailOptions()" id="thumbnailBtn" disabled>
+                    🖼️ 썸네일 생성
+                </button>
+                <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
+                    ⏪ 역재생 비디오 생성
+                </button>
+            </div>
+
             <!-- 필터 조절 옵션 -->
             <div class="gif-controls" style="margin-bottom: 15px;">
                 <h3>🎨 비디오 필터 조절 (선택사항)</h3>
@@ -511,6 +536,9 @@
             <!-- 캡처 텍스트 옵션 -->
             <div class="gif-controls" style="margin-bottom: 15px;">
                 <h3>✏️ 캡처 텍스트 추가 (선택사항)</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #4CAF50; border-radius: 4px;">
+                    💡 <strong>사용법:</strong> 아래에서 텍스트를 입력한 후 <strong>📸 PNG/JPG 캡처</strong> 버튼을 누르면 입력한 텍스트가 이미지에 자동으로 포함되어 저장됩니다.
+                </p>
                 <div class="gif-options">
                     <label>
                         텍스트 내용
@@ -563,31 +591,6 @@
                         예: 00:00:15.23 (현재 재생 시간 표시)
                     </small>
                 </div>
-            </div>
-
-            <!-- 컨트롤 버튼 -->
-            <div class="controls">
-                <button class="btn btn-success" onclick="captureFrame('png')" id="capturePngBtn" disabled>
-                    📸 PNG 캡처
-                </button>
-                <button class="btn btn-success" onclick="captureFrame('jpg')" id="captureJpgBtn" disabled>
-                    📸 JPG 캡처
-                </button>
-                <button class="btn btn-secondary" onclick="showIntervalCaptureOptions()" id="intervalCaptureBtn" disabled>
-                    🎬 간격 캡처
-                </button>
-                <button class="btn btn-secondary" onclick="showGifOptions()" id="gifBtn" disabled>
-                    🎞️ GIF 생성
-                </button>
-                <button class="btn" onclick="showTrimOptions()" id="trimBtn" disabled>
-                    ✂️ 구간 잘라내기
-                </button>
-                <button class="btn btn-success" onclick="showThumbnailOptions()" id="thumbnailBtn" disabled>
-                    🖼️ 썸네일 생성
-                </button>
-                <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
-                    ⏪ 역재생 비디오 생성
-                </button>
             </div>
 
             <!-- 간격 캡처 옵션 -->
@@ -679,16 +682,21 @@
             <!-- 트림 옵션 -->
             <div class="gif-controls" id="trimControls" style="display: none;">
                 <h3>✂️ 구간 잘라내기 옵션</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    선택한 구간: <span id="trimRangeDisplay">0.0초 ~ 10.0초</span> (길이: <span id="trimDurationDisplay">10.0초</span>)
+                </p>
                 <div class="gif-options">
                     <label>
-                        시작 시간 (초)
-                        <input type="number" id="trimStartTime" value="0" min="0" step="0.1">
-                        <small style="color: #666; margin-top: 5px;">잘라낼 구간의 시작 시간</small>
+                        시작 시간
+                        <input type="range" id="trimStartTime" value="0" min="0" step="0.1" oninput="updateTrimRange()">
+                        <input type="number" id="trimStartTimeNum" value="0" min="0" step="0.1" style="margin-top: 10px;" oninput="updateTrimRangeFromNum()">
+                        <small style="color: #666; margin-top: 5px;">슬라이더 또는 숫자로 조절</small>
                     </label>
                     <label>
-                        종료 시간 (초)
-                        <input type="number" id="trimEndTime" value="10" min="0" step="0.1">
-                        <small style="color: #666; margin-top: 5px;">잘라낼 구간의 종료 시간</small>
+                        종료 시간
+                        <input type="range" id="trimEndTime" value="10" min="0" step="0.1" oninput="updateTrimRange()">
+                        <input type="number" id="trimEndTimeNum" value="10" min="0" step="0.1" style="margin-top: 10px;" oninput="updateTrimRangeFromNum()">
+                        <small style="color: #666; margin-top: 5px;">슬라이더 또는 숫자로 조절</small>
                     </label>
                     <label>
                         프레임 레이트 (fps)
@@ -1198,6 +1206,48 @@
             }
         }
 
+        // 트림 구간 표시 업데이트
+        function updateTrimRange() {
+            const startTime = parseFloat(document.getElementById('trimStartTime').value);
+            const endTime = parseFloat(document.getElementById('trimEndTime').value);
+
+            // 숫자 입력 필드 동기화
+            document.getElementById('trimStartTimeNum').value = startTime.toFixed(1);
+            document.getElementById('trimEndTimeNum').value = endTime.toFixed(1);
+
+            // 시작 시간이 종료 시간보다 크면 자동 조정
+            if (startTime >= endTime) {
+                const newEnd = Math.min(startTime + 1, videoPlayer.duration);
+                document.getElementById('trimEndTime').value = newEnd;
+                document.getElementById('trimEndTimeNum').value = newEnd.toFixed(1);
+            }
+
+            updateTrimDisplay();
+        }
+
+        // 숫자 입력에서 슬라이더 업데이트
+        function updateTrimRangeFromNum() {
+            const startTime = parseFloat(document.getElementById('trimStartTimeNum').value);
+            const endTime = parseFloat(document.getElementById('trimEndTimeNum').value);
+
+            document.getElementById('trimStartTime').value = startTime;
+            document.getElementById('trimEndTime').value = endTime;
+
+            updateTrimDisplay();
+        }
+
+        // 선택 구간 표시
+        function updateTrimDisplay() {
+            const startTime = parseFloat(document.getElementById('trimStartTime').value);
+            const endTime = parseFloat(document.getElementById('trimEndTime').value);
+            const duration = endTime - startTime;
+
+            document.getElementById('trimRangeDisplay').textContent =
+                `${startTime.toFixed(1)}초 ~ ${endTime.toFixed(1)}초`;
+            document.getElementById('trimDurationDisplay').textContent =
+                `${duration.toFixed(1)}초`;
+        }
+
         // 트림 옵션 표시
         function showTrimOptions() {
             const intervalControls = document.getElementById('intervalCaptureControls');
@@ -1216,7 +1266,14 @@
                 const duration = videoPlayer.duration || 0;
                 document.getElementById('trimStartTime').max = duration;
                 document.getElementById('trimEndTime').max = duration;
-                document.getElementById('trimEndTime').value = Math.min(10, duration);
+                document.getElementById('trimStartTimeNum').max = duration;
+                document.getElementById('trimEndTimeNum').max = duration;
+
+                const endValue = Math.min(10, duration);
+                document.getElementById('trimEndTime').value = endValue;
+                document.getElementById('trimEndTimeNum').value = endValue;
+
+                updateTrimDisplay();
             }
         }
 
