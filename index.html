@@ -636,10 +636,14 @@
             <!-- GIF 옵션 -->
             <div class="gif-controls" id="gifControls" style="display: none;">
                 <h3>GIF 생성 옵션</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    💡 현재 위치: <span id="currentTimeDisplay">0:00</span>에서 시작합니다
+                </p>
                 <div class="gif-options">
                     <label>
                         시작 시간 (초)
                         <input type="number" id="gifStartTime" value="0" min="0" step="0.1">
+                        <small style="color: #666;">비디오 멈춘 위치에서 자동 설정됨</small>
                     </label>
                     <label>
                         지속 시간 (초)
@@ -648,10 +652,23 @@
                     <label>
                         프레임 레이트 (fps)
                         <input type="number" id="gifFps" value="10" min="5" max="30" step="5">
+                        <small style="color: #666;">낮을수록 용량 작아짐</small>
                     </label>
                     <label>
                         너비 (픽셀)
                         <input type="number" id="gifWidth" value="480" min="240" max="1920" step="120">
+                        <small style="color: #666;">작을수록 용량 작아짐</small>
+                    </label>
+                    <label>
+                        품질
+                        <select id="gifQuality">
+                            <option value="1">최고 (용량 큼, 느림)</option>
+                            <option value="5">높음</option>
+                            <option value="10" selected>보통 (권장)</option>
+                            <option value="15">낮음 (용량 작음)</option>
+                            <option value="20">최소 (용량 매우 작음, 빠름)</option>
+                        </select>
+                        <small style="color: #666;">낮을수록 용량 작아지고 빠름</small>
                     </label>
                 </div>
                 <button class="btn btn-secondary" onclick="generateGif()">
@@ -1142,7 +1159,23 @@
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
             if (gifControls.style.display === 'block') {
+                // 현재 비디오 위치를 시작 시간으로 자동 설정
+                const currentTime = videoPlayer.currentTime;
+                document.getElementById('gifStartTime').value = currentTime.toFixed(1);
                 document.getElementById('gifStartTime').max = videoPlayer.duration;
+
+                // 현재 위치 표시 업데이트
+                const mins = Math.floor(currentTime / 60);
+                const secs = Math.floor(currentTime % 60);
+                const timeText = `${mins}:${String(secs).padStart(2, '0')}`;
+                document.getElementById('currentTimeDisplay').textContent = timeText;
+
+                // 지속 시간이 비디오 끝을 넘지 않도록 조정
+                const duration = parseFloat(document.getElementById('gifDuration').value);
+                if (currentTime + duration > videoPlayer.duration) {
+                    const maxDuration = Math.max(0.5, videoPlayer.duration - currentTime);
+                    document.getElementById('gifDuration').value = maxDuration.toFixed(1);
+                }
             }
         }
 
@@ -1937,19 +1970,22 @@
             const duration = parseFloat(document.getElementById('gifDuration').value);
             const fps = parseInt(document.getElementById('gifFps').value);
             const width = parseInt(document.getElementById('gifWidth').value);
+            const quality = parseInt(document.getElementById('gifQuality').value);
 
             if (startTime + duration > videoPlayer.duration) {
                 showStatus('시작 시간 + 지속 시간이 비디오 길이를 초과합니다.', 'error');
                 return;
             }
 
-            showStatus('GIF 생성 중... 잠시만 기다려주세요.', 'warning');
+            // 품질 정보 포함한 상태 메시지
+            const qualityText = quality === 1 ? '최고' : quality === 5 ? '높음' : quality === 10 ? '보통' : quality === 15 ? '낮음' : '최소';
+            showStatus(`GIF 생성 중 (품질: ${qualityText})... 잠시만 기다려주세요.`, 'warning');
             showProgress(0);
 
             try {
                 const gif = new GIF({
                     workers: 2,
-                    quality: 10,
+                    quality: quality,
                     width: width,
                     height: Math.floor((videoPlayer.videoHeight / videoPlayer.videoWidth) * width),
                     workerScript: 'gif.worker.js'
