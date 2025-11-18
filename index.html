@@ -2792,9 +2792,9 @@
                     showStatus('슬로우 모션 비디오가 완료되었습니다!', 'success');
                 };
 
-                // 프레임 반복 방식으로 슬로우 모션 생성
+                // 프레임 보간(Frame Interpolation) 방식으로 슬로우 모션 생성
                 // - 정상 구간: 원본 프레임 그대로 (원본 fps 유지)
-                // - 슬로우 구간: 원본 프레임을 여러 번 반복 (부드러운 슬로우)
+                // - 슬로우 구간: 프레임 사이에 중간 프레임 보간 (부드러운 슬로우)
 
                 const frameInterval = 1 / fps;
                 const repeatCount = Math.round(1 / slowSpeed); // 프레임 반복 횟수 (예: 0.5x = 2번, 0.25x = 4번)
@@ -2806,46 +2806,87 @@
                 let frameTimes = [];
 
                 // 디버깅: 구간 정보 출력
-                console.log('=== 슬로우 모션 구간 정보 ===');
+                console.log('=== 슬로우 모션 구간 정보 (프레임 보간) ===');
                 console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
                 console.log(`슬로우 시작: ${slowStartTime.toFixed(2)}초`);
                 console.log(`슬로우 종료: ${slowEndTime.toFixed(2)}초`);
-                console.log(`슬로우 속도: ${slowSpeed}x (반복 횟수: ${repeatCount})`);
+                console.log(`슬로우 속도: ${slowSpeed}x (보간 스텝: ${repeatCount})`);
 
                 // 구간 1: 정상 속도 (원본 프레임 사용)
                 let section1Count = 0;
                 for (let t = 0; t < slowStartTime; t += originalFrameInterval) {
-                    frameTimes.push({ time: t, repeat: 1 });
+                    frameTimes.push({
+                        time: t,
+                        section: 'normal'
+                    });
                     section1Count++;
                 }
 
-                // 구간 2: 슬로우 모션 (프레임 반복)
+                // 구간 2: 슬로우 모션 (프레임 보간)
                 let section2Count = 0;
+                const slowFrameTimes = [];
                 for (let t = slowStartTime; t < slowEndTime; t += originalFrameInterval) {
-                    frameTimes.push({ time: t, repeat: repeatCount });
+                    slowFrameTimes.push(t);
+                }
+
+                // 슬로우 구간의 각 프레임 쌍 사이에 보간
+                for (let i = 0; i < slowFrameTimes.length; i++) {
+                    const currentTime = slowFrameTimes[i];
+                    const nextTime = slowFrameTimes[i + 1] || currentTime;
+
+                    frameTimes.push({
+                        time: currentTime,
+                        nextTime: nextTime,
+                        section: 'slow',
+                        steps: repeatCount  // 중간 프레임 개수
+                    });
                     section2Count++;
                 }
 
                 // 구간 3: 정상 속도 (원본 프레임 사용)
                 let section3Count = 0;
                 for (let t = slowEndTime; t < totalDuration; t += originalFrameInterval) {
-                    frameTimes.push({ time: t, repeat: 1 });
+                    frameTimes.push({
+                        time: t,
+                        section: 'normal'
+                    });
                     section3Count++;
                 }
 
-                console.log(`구간 1 (정상): ${section1Count}개 프레임 (반복 1)`);
-                console.log(`구간 2 (슬로우): ${section2Count}개 프레임 (반복 ${repeatCount})`);
-                console.log(`구간 3 (정상): ${section3Count}개 프레임 (반복 1)`);
+                console.log(`구간 1 (정상): ${section1Count}개 프레임`);
+                console.log(`구간 2 (슬로우 + 보간): ${section2Count}개 프레임 (각 ${repeatCount}배 보간)`);
+                console.log(`구간 3 (정상): ${section3Count}개 프레임`);
                 console.log(`총 프레임 수: ${frameTimes.length}개`);
+                console.log(`예상 출력 프레임: ${section1Count + section2Count * repeatCount + section3Count}개`);
                 console.log('========================');
 
+                // 총 프레임 수 계산 (보간 프레임 포함)
+                let totalFrames = frameTimes.reduce((sum, frame) => {
+                    if (frame.section === 'slow') {
+                        return sum + frame.steps;
+                    } else {
+                        return sum + 1;
+                    }
+                }, 0);
+
                 let currentFrameIndex = 0;
-                let currentRepeat = 0;
-                let totalFrames = frameTimes.reduce((sum, frame) => sum + frame.repeat, 0);
+                let currentStep = 0; // 현재 보간 스텝
                 let processedFrames = 0;
 
                 // 프레임 캡처 간격 (ms)
-                const outputFrameInterval = 1000 / fps; // 예: 60fps = 16.67ms
+                const outputFrameInterval = 1000 / fps;
+
+                // 프레임 보간을 위한 임시 캔버스
+                const prevFrameCanvas = document.createElement('canvas');
+                const nextFrameCanvas = document.createElement('canvas');
+                prevFrameCanvas.width = nextFrameCanvas.width = recordCanvas.width;
+                prevFrameCanvas.height = nextFrameCanvas.height = recordCanvas.height;
+                const prevFrameCtx = prevFrameCanvas.getContext('2d');
+                const nextFrameCtx = nextFrameCanvas.getContext('2d');
+
+                let prevFrameLoaded = false;
+                let nextFrameLoaded = false;
+                let waitingForSeek = false;
 
                 const captureFrame = () => {
                     if (currentFrameIndex >= frameTimes.length) {
@@ -2855,36 +2896,64 @@
 
                     const frameInfo = frameTimes[currentFrameIndex];
 
-                    // 첫 반복일 때만 비디오 시간 이동
-                    if (currentRepeat === 0) {
+                    if (frameInfo.section === 'normal') {
+                        // 정상 구간: 바로 프레임 로드
+                        waitingForSeek = true;
                         videoPlayer.currentTime = Math.min(frameInfo.time, totalDuration);
-                    } else {
-                        // 프레임 반복 시 seeked 이벤트 없이 바로 그리기
-                        renderFrame();
+                    } else if (frameInfo.section === 'slow') {
+                        // 슬로우 구간: 프레임 보간 처리
+                        if (currentStep === 0) {
+                            // 첫 번째 스텝: 현재 프레임과 다음 프레임 로드
+                            prevFrameLoaded = false;
+                            nextFrameLoaded = false;
+
+                            // 현재 프레임 로드
+                            waitingForSeek = true;
+                            videoPlayer.currentTime = Math.min(frameInfo.time, totalDuration);
+                        } else {
+                            // 중간 스텝: 보간 프레임 생성
+                            renderInterpolatedFrame();
+                        }
                     }
                 };
 
-                const renderFrame = () => {
-                    // 필터 적용 및 프레임 그리기
+                const renderInterpolatedFrame = () => {
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    // Alpha 값 계산 (0.0 = 이전 프레임, 1.0 = 다음 프레임)
+                    const alpha = currentStep / frameInfo.steps;
+
+                    // 두 프레임을 블렌딩하여 중간 프레임 생성
+                    recordCtx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+
+                    // 필터 적용
                     recordCtx.filter = getCurrentFilterString();
-                    recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
+
+                    // 이전 프레임 (1 - alpha 비율)
+                    recordCtx.globalAlpha = 1 - alpha;
+                    recordCtx.drawImage(prevFrameCanvas, 0, 0);
+
+                    // 다음 프레임 (alpha 비율)
+                    recordCtx.globalAlpha = alpha;
+                    recordCtx.drawImage(nextFrameCanvas, 0, 0);
+
+                    // 복원
+                    recordCtx.globalAlpha = 1.0;
                     recordCtx.filter = 'none';
 
                     processedFrames++;
                     const progress = (processedFrames / totalFrames) * 100;
                     showProgress(progress);
 
-                    const frameInfo = frameTimes[currentFrameIndex];
-                    currentRepeat++;
+                    currentStep++;
 
-                    if (currentRepeat >= frameInfo.repeat) {
+                    if (currentStep >= frameInfo.steps) {
                         // 다음 프레임으로
                         currentFrameIndex++;
-                        currentRepeat = 0;
+                        currentStep = 0;
                     }
 
                     if (currentFrameIndex < frameTimes.length) {
-                        // 고정된 간격으로 다음 프레임 캡처
                         setTimeout(() => {
                             captureFrame();
                         }, outputFrameInterval);
@@ -2894,8 +2963,68 @@
                     }
                 };
 
+                const renderFrame = () => {
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    if (frameInfo.section === 'normal') {
+                        // 정상 구간: 바로 그리기
+                        recordCtx.filter = getCurrentFilterString();
+                        recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
+                        recordCtx.filter = 'none';
+
+                        processedFrames++;
+                        const progress = (processedFrames / totalFrames) * 100;
+                        showProgress(progress);
+
+                        currentFrameIndex++;
+
+                        if (currentFrameIndex < frameTimes.length) {
+                            setTimeout(() => {
+                                captureFrame();
+                            }, outputFrameInterval);
+                        } else {
+                            mediaRecorder.stop();
+                            videoPlayer.removeEventListener('seeked', onSeeked);
+                        }
+                    } else if (frameInfo.section === 'slow') {
+                        // 슬로우 구간: 프레임 저장 후 다음 프레임 로드
+                        if (!prevFrameLoaded) {
+                            // 현재 프레임을 prevFrameCanvas에 저장
+                            prevFrameCtx.filter = getCurrentFilterString();
+                            prevFrameCtx.drawImage(videoPlayer, 0, 0, prevFrameCanvas.width, prevFrameCanvas.height);
+                            prevFrameCtx.filter = 'none';
+                            prevFrameLoaded = true;
+
+                            // 다음 프레임 로드
+                            if (frameInfo.nextTime !== frameInfo.time) {
+                                waitingForSeek = true;
+                                videoPlayer.currentTime = Math.min(frameInfo.nextTime, totalDuration);
+                            } else {
+                                // 마지막 프레임인 경우 자기 자신과 블렌딩
+                                nextFrameCtx.drawImage(prevFrameCanvas, 0, 0);
+                                nextFrameLoaded = true;
+                                currentStep = 0;
+                                renderInterpolatedFrame();
+                            }
+                        } else if (!nextFrameLoaded) {
+                            // 다음 프레임을 nextFrameCanvas에 저장
+                            nextFrameCtx.filter = getCurrentFilterString();
+                            nextFrameCtx.drawImage(videoPlayer, 0, 0, nextFrameCanvas.width, nextFrameCanvas.height);
+                            nextFrameCtx.filter = 'none';
+                            nextFrameLoaded = true;
+
+                            // 보간 프레임 생성 시작
+                            currentStep = 0;
+                            renderInterpolatedFrame();
+                        }
+                    }
+                };
+
                 const onSeeked = () => {
-                    renderFrame();
+                    if (waitingForSeek) {
+                        waitingForSeek = false;
+                        renderFrame();
+                    }
                 };
 
                 // seeked 이벤트 리스너 등록
