@@ -2797,7 +2797,11 @@
                 // - 슬로우 구간: 프레임 사이에 중간 프레임 보간 (부드러운 슬로우)
 
                 const frameInterval = 1 / fps;
-                const repeatCount = Math.round(1 / slowSpeed); // 프레임 반복 횟수 (예: 0.5x = 2번, 0.25x = 4번)
+                // 보간 스텝 수를 3배로 증가 (더 부드러운 슬로우 모션)
+                const baseSteps = Math.round(1 / slowSpeed);
+                const interpolationSteps = Math.max(baseSteps * 3, 6); // 최소 6개 보간 프레임
+
+                console.log(`슬로우 속도: ${slowSpeed}x → 기본 스텝: ${baseSteps}, 보간 스텝: ${interpolationSteps}`);
 
                 // 원본 프레임 시간 배열 생성
                 const originalFps = 30; // 일반적인 원본 fps (추정)
@@ -2810,7 +2814,7 @@
                 console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
                 console.log(`슬로우 시작: ${slowStartTime.toFixed(2)}초`);
                 console.log(`슬로우 종료: ${slowEndTime.toFixed(2)}초`);
-                console.log(`슬로우 속도: ${slowSpeed}x (보간 스텝: ${repeatCount})`);
+                console.log(`슬로우 속도: ${slowSpeed}x (보간 스텝: ${interpolationSteps})`);
 
                 // 구간 1: 정상 속도 (원본 프레임 사용)
                 let section1Count = 0;
@@ -2838,7 +2842,7 @@
                         time: currentTime,
                         nextTime: nextTime,
                         section: 'slow',
-                        steps: repeatCount  // 중간 프레임 개수
+                        steps: interpolationSteps  // 중간 프레임 개수 (3배 증가)
                     });
                     section2Count++;
                 }
@@ -2854,10 +2858,18 @@
                 }
 
                 console.log(`구간 1 (정상): ${section1Count}개 프레임`);
-                console.log(`구간 2 (슬로우 + 보간): ${section2Count}개 프레임 (각 ${repeatCount}배 보간)`);
+                console.log(`구간 2 (슬로우 + 보간): ${section2Count}개 원본 프레임 (각 ${interpolationSteps}개 보간)`);
                 console.log(`구간 3 (정상): ${section3Count}개 프레임`);
                 console.log(`총 프레임 수: ${frameTimes.length}개`);
-                console.log(`예상 출력 프레임: ${section1Count + section2Count * repeatCount + section3Count}개`);
+                console.log(`예상 출력 프레임: ${section1Count + section2Count * interpolationSteps + section3Count}개`);
+
+                // 구간별 상세 정보
+                const normalFrames = section1Count + section3Count;
+                const slowFrames = section2Count * interpolationSteps;
+                console.log(`\n📊 상세 분석:`);
+                console.log(`  정상 구간 총: ${normalFrames}개 프레임 (구간1: ${section1Count}, 구간3: ${section3Count})`);
+                console.log(`  슬로우 구간: ${slowFrames}개 프레임 (${section2Count} × ${interpolationSteps})`);
+                console.log(`  전체 출력: ${normalFrames + slowFrames}개 프레임`);
                 console.log('========================');
 
                 // 총 프레임 수 계산 (보간 프레임 포함)
@@ -2951,6 +2963,9 @@
                         // 다음 프레임으로
                         currentFrameIndex++;
                         currentStep = 0;
+                        // 플래그 초기화 (다음 슬로우 프레임 또는 정상 구간 진입 준비)
+                        prevFrameLoaded = false;
+                        nextFrameLoaded = false;
                     }
 
                     if (currentFrameIndex < frameTimes.length) {
@@ -2958,6 +2973,7 @@
                             captureFrame();
                         }, outputFrameInterval);
                     } else {
+                        console.log('✅ 모든 프레임 처리 완료!');
                         mediaRecorder.stop();
                         videoPlayer.removeEventListener('seeked', onSeeked);
                     }
@@ -2966,8 +2982,17 @@
                 const renderFrame = () => {
                     const frameInfo = frameTimes[currentFrameIndex];
 
+                    // 디버깅: 현재 처리 중인 프레임 정보
+                    if (processedFrames % 30 === 0) {  // 30프레임마다 로그
+                        console.log(`🎬 프레임 ${processedFrames}/${totalFrames} - 구간: ${frameInfo.section}, 시간: ${frameInfo.time.toFixed(2)}s`);
+                    }
+
                     if (frameInfo.section === 'normal') {
                         // 정상 구간: 바로 그리기
+                        // 슬로우 구간 플래그 초기화 (구간 전환 시)
+                        prevFrameLoaded = false;
+                        nextFrameLoaded = false;
+
                         recordCtx.filter = getCurrentFilterString();
                         recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
                         recordCtx.filter = 'none';
@@ -2983,6 +3008,7 @@
                                 captureFrame();
                             }, outputFrameInterval);
                         } else {
+                            console.log('✅ 모든 프레임 처리 완료!');
                             mediaRecorder.stop();
                             videoPlayer.removeEventListener('seeked', onSeeked);
                         }
