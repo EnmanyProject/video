@@ -457,45 +457,10 @@
 
                 <!-- 파워슬로우 재생 토글 버튼 -->
                 <div style="margin-top: 10px;">
-                    <button class="btn" onclick="togglePowerSlowControls()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold;">
-                        ⚡ 파워슬로우 재생 ▼
+                    <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; font-size: 16px; padding: 10px 20px;">
+                        ⚡ 파워슬로우 재생 OFF
                     </button>
-                </div>
-
-                <!-- 파워슬로우 재생 컨트롤 -->
-                <div id="powerSlowControls" style="display: none; margin-top: 10px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                        <div style="color: white; font-weight: bold; font-size: 16px;">⚡ 파워슬로우 재생</div>
-
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="color: white; font-size: 14px;">속도:</label>
-                            <select id="powerSlowSpeed" style="padding: 5px 10px; border-radius: 4px; border: none; font-size: 14px;">
-                                <option value="0.5">0.5x (2배 슬로우)</option>
-                                <option value="0.25" selected>0.25x (4배 슬로우)</option>
-                                <option value="0.1">0.1x (10배 슬로우)</option>
-                            </select>
-                        </div>
-
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="color: white; font-size: 14px;">품질:</label>
-                            <select id="powerSlowQuality" style="padding: 5px 10px; border-radius: 4px; border: none; font-size: 14px;">
-                                <option value="normal">보통</option>
-                                <option value="high" selected>고품질</option>
-                                <option value="ultra">최고품질</option>
-                            </select>
-                        </div>
-
-                        <button class="btn" id="powerSlowPlayBtn" onclick="startPowerSlowPlayback()" style="background: #4CAF50; color: white; padding: 8px 20px;">
-                            ▶ 재생
-                        </button>
-                        <button class="btn" id="powerSlowStopBtn" onclick="stopPowerSlowPlayback()" style="background: #f44336; color: white; padding: 8px 20px; display: none;">
-                            ⏹ 정지
-                        </button>
-
-                        <div style="color: white; font-size: 12px; opacity: 0.9;">
-                            💡 실시간 프레임 보간으로 부드러운 슬로우 모션 재생
-                        </div>
-                    </div>
+                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 고품질)</span>
                 </div>
 
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
@@ -3848,74 +3813,59 @@
         });
 
         // ===============================
-        // 파워슬로우 재생 (실시간 프레임 보간)
+        // 파워슬로우 재생 (실시간 프레임 보간 토글)
         // ===============================
 
         let powerSlowState = {
-            isPlaying: false,
+            isActive: false,
             animationId: null,
-            speed: 0.25,
+            speed: 0.25,  // 4배 슬로우
             quality: 'high',
             lastFrameTime: 0,
-            currentAlpha: 0,
             prevFrameData: null,
             nextFrameData: null,
             frameCaptureCanvas: null,
             frameCaptureCtx: null,
-            interpolationSteps: 4,
+            interpolationSteps: 6,  // 고품질 기본값
             currentStep: 0,
-            targetFrameTime: 0
+            targetFrameTime: 0,
+            wasPlaying: false
         };
 
-        // 파워슬로우 컨트롤 토글
-        function togglePowerSlowControls() {
-            const controls = document.getElementById('powerSlowControls');
-            const toggleBtn = document.getElementById('powerSlowToggleBtn');
-
-            if (controls.style.display === 'none') {
-                controls.style.display = 'block';
-                toggleBtn.textContent = '⚡ 파워슬로우 재생 ▲';
-            } else {
-                controls.style.display = 'none';
-                toggleBtn.textContent = '⚡ 파워슬로우 재생 ▼';
-                // 재생 중이면 정지
-                if (powerSlowState.isPlaying) {
-                    stopPowerSlowPlayback();
-                }
-            }
-        }
-
-        // 파워슬로우 재생 시작
-        function startPowerSlowPlayback() {
+        // 파워슬로우 재생 토글
+        function togglePowerSlowPlayback() {
             // 비디오 로드 확인
             if (!videoPlayer.src || !videoPlayer.duration) {
                 showStatus('비디오를 먼저 로드해주세요.', 'error');
                 return;
             }
 
-            // 설정 가져오기
-            const speed = parseFloat(document.getElementById('powerSlowSpeed').value);
-            const quality = document.getElementById('powerSlowQuality').value;
-
-            // 품질에 따른 보간 스텝 설정
-            let baseSteps = Math.round(1 / speed);
-            let interpolationSteps = baseSteps;
-            if (quality === 'high') {
-                interpolationSteps = Math.round(baseSteps * 1.5);
-            } else if (quality === 'ultra') {
-                interpolationSteps = Math.round(baseSteps * 2);
+            if (powerSlowState.isActive) {
+                // 파워슬로우 OFF → 일반 재생으로 복귀
+                stopPowerSlowPlayback();
+            } else {
+                // 파워슬로우 ON → 슬로우 모션 시작
+                startPowerSlowPlayback();
             }
-            interpolationSteps = Math.max(interpolationSteps, 2);
+        }
+
+        // 파워슬로우 재생 시작
+        function startPowerSlowPlayback() {
+            // 품질에 따른 보간 스텝 설정
+            const speed = 0.25;  // 4배 슬로우 고정
+            const quality = 'high';
+            let baseSteps = Math.round(1 / speed);
+            let interpolationSteps = Math.round(baseSteps * 1.5);  // 고품질
 
             // 상태 초기화
             powerSlowState.speed = speed;
             powerSlowState.quality = quality;
             powerSlowState.interpolationSteps = interpolationSteps;
             powerSlowState.currentStep = 0;
-            powerSlowState.currentAlpha = 0;
-            powerSlowState.isPlaying = true;
+            powerSlowState.isActive = true;
             powerSlowState.lastFrameTime = performance.now();
             powerSlowState.targetFrameTime = videoPlayer.currentTime;
+            powerSlowState.wasPlaying = !videoPlayer.paused;
 
             // Canvas 초기화
             if (!powerSlowState.frameCaptureCanvas) {
@@ -3928,18 +3878,34 @@
             // 비디오 일시정지 (수동으로 프레임 제어)
             videoPlayer.pause();
 
-            // previewCanvas 활용
+            // 텍스트 프리뷰 애니메이션 중지
+            if (previewAnimationId) {
+                cancelAnimationFrame(previewAnimationId);
+                previewAnimationId = null;
+            }
+
+            // previewCanvas 표시
             previewCanvas.style.display = 'block';
+            previewCanvas.style.position = 'absolute';
+            previewCanvas.style.top = '0';
+            previewCanvas.style.left = '0';
+            previewCanvas.style.zIndex = '10';
 
             // 첫 프레임 캡처
             capturePowerSlowFrame();
 
             // UI 업데이트
-            document.getElementById('powerSlowPlayBtn').style.display = 'none';
-            document.getElementById('powerSlowStopBtn').style.display = 'inline-block';
+            const toggleBtn = document.getElementById('powerSlowToggleBtn');
+            toggleBtn.textContent = '⚡ 파워슬로우 재생 ON';
+            toggleBtn.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
 
-            console.log(`⚡ 파워슬로우 재생 시작 - 속도: ${speed}x, 품질: ${quality}, 보간 스텝: ${interpolationSteps}`);
-            showStatus(`파워슬로우 재생 시작 (${speed}x 속도, ${quality} 품질)`, 'success');
+            const status = document.getElementById('powerSlowStatus');
+            status.textContent = '슬로우 모션 재생 중 (다시 클릭하면 일반 재생으로 복귀)';
+            status.style.color = '#f5576c';
+            status.style.fontWeight = 'bold';
+
+            console.log(`⚡ 파워슬로우 ON - 속도: ${speed}x, 보간 스텝: ${interpolationSteps}`);
+            showStatus('파워슬로우 재생 ON', 'success');
 
             // 렌더링 루프 시작
             powerSlowRenderLoop();
@@ -3952,24 +3918,43 @@
                 powerSlowState.animationId = null;
             }
 
-            powerSlowState.isPlaying = false;
+            powerSlowState.isActive = false;
             powerSlowState.prevFrameData = null;
             powerSlowState.nextFrameData = null;
 
-            // previewCanvas 숨기기 (일반 텍스트 프리뷰로 복귀)
-            // (텍스트 프리뷰 기능과 충돌하지 않도록)
+            // previewCanvas 스타일 복원 (텍스트 프리뷰로 복귀)
+            previewCanvas.style.position = '';
+            previewCanvas.style.top = '';
+            previewCanvas.style.left = '';
+            previewCanvas.style.zIndex = '';
+
+            // 비디오 재생 복귀 (이전 상태가 재생 중이었다면)
+            if (powerSlowState.wasPlaying) {
+                videoPlayer.play();
+            }
+
+            // 텍스트 프리뷰 애니메이션 재시작
+            if (!previewAnimationId) {
+                animatePreview();
+            }
 
             // UI 업데이트
-            document.getElementById('powerSlowPlayBtn').style.display = 'inline-block';
-            document.getElementById('powerSlowStopBtn').style.display = 'none';
+            const toggleBtn = document.getElementById('powerSlowToggleBtn');
+            toggleBtn.textContent = '⚡ 파워슬로우 재생 OFF';
+            toggleBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
 
-            console.log('⚡ 파워슬로우 재생 정지');
-            showStatus('파워슬로우 재생 정지', 'info');
+            const status = document.getElementById('powerSlowStatus');
+            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 고품질)';
+            status.style.color = '#666';
+            status.style.fontWeight = 'normal';
+
+            console.log('⚡ 파워슬로우 OFF');
+            showStatus('파워슬로우 재생 OFF', 'info');
         }
 
         // 파워슬로우 프레임 캡처
         function capturePowerSlowFrame() {
-            if (!powerSlowState.isPlaying) return;
+            if (!powerSlowState.isActive) return;
 
             const ctx = powerSlowState.frameCaptureCtx;
             const canvas = powerSlowState.frameCaptureCanvas;
@@ -3986,7 +3971,7 @@
 
         // 파워슬로우 렌더링 루프
         function powerSlowRenderLoop(timestamp) {
-            if (!powerSlowState.isPlaying) return;
+            if (!powerSlowState.isActive) return;
 
             const now = performance.now();
             const elapsed = now - powerSlowState.lastFrameTime;
