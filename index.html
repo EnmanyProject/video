@@ -460,7 +460,7 @@
                     <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; font-size: 16px; padding: 10px 20px;">
                         ⚡ 파워슬로우 재생 OFF
                     </button>
-                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 고품질)</span>
+                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 12개 프레임)</span>
                 </div>
 
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
@@ -3820,13 +3820,13 @@
             isActive: false,
             animationId: null,
             speed: 0.25,  // 4배 슬로우
-            quality: 'high',
+            quality: 'ultra',
             lastFrameTime: 0,
             prevFrameData: null,
             nextFrameData: null,
             frameCaptureCanvas: null,
             frameCaptureCtx: null,
-            interpolationSteps: 6,  // 고품질 기본값
+            interpolationSteps: 12,  // 최고품질 12개 프레임
             currentStep: 0,
             targetFrameTime: 0,
             wasPlaying: false
@@ -3853,9 +3853,9 @@
         function startPowerSlowPlayback() {
             // 품질에 따른 보간 스텝 설정
             const speed = 0.25;  // 4배 슬로우 고정
-            const quality = 'high';
+            const quality = 'ultra';
             let baseSteps = Math.round(1 / speed);
-            let interpolationSteps = Math.round(baseSteps * 1.5);  // 고품질
+            let interpolationSteps = Math.round(baseSteps * 3);  // 3배 → 12개 프레임
 
             // 상태 초기화
             powerSlowState.speed = speed;
@@ -3944,7 +3944,7 @@
             toggleBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
 
             const status = document.getElementById('powerSlowStatus');
-            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 고품질)';
+            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 12개 프레임)';
             status.style.color = '#666';
             status.style.fontWeight = 'normal';
 
