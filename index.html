@@ -541,6 +541,9 @@
                 <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
                     ⏪ 역재생 비디오 생성
                 </button>
+                <button class="btn" onclick="showHighQualityOptions()" id="highQualityBtn" disabled style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    ⚡ 고화질 비디오 생성
+                </button>
             </div>
 
             <!-- 옵션 토글 버튼 -->
@@ -935,6 +938,50 @@
                 </button>
             </div>
 
+            <!-- 고화질 비디오 옵션 -->
+            <div class="gif-controls" id="highQualityControls" style="display: none;">
+                <h3>⚡ 고화질 비디오 생성 옵션</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #4CAF50; border-radius: 4px;">
+                    💡 <strong>프레임 보간 기술</strong>로 부드러운 고화질 영상을 생성합니다. 원본 프레임 사이에 중간 프레임을 자동 생성하여 더 자연스러운 재생을 제공합니다.
+                </p>
+                <div class="gif-options">
+                    <label>
+                        목표 FPS (프레임 레이트)
+                        <select id="highQualityTargetFps" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="60" selected>60 fps (2배 부드러움)</option>
+                            <option value="90">90 fps (3배 부드러움)</option>
+                            <option value="120">120 fps (4배 부드러움 - 최고)</option>
+                        </select>
+                        <small style="color: #666; margin-top: 5px; display: block;">원본 30fps 기준 프레임 보간</small>
+                    </label>
+                    <label>
+                        보간 품질
+                        <select id="highQualityInterpolation" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="normal">보통 (빠른 처리)</option>
+                            <option value="high" selected>고품질 (권장)</option>
+                            <option value="ultra">최고품질 (느린 처리)</option>
+                        </select>
+                        <small style="color: #666; margin-top: 5px; display: block;">품질이 높을수록 처리 시간 증가</small>
+                    </label>
+                    <label>
+                        비디오 품질 (비트레이트)
+                        <select id="highQualityBitrate" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="15000000">초고화질 (15 Mbps)</option>
+                            <option value="12000000" selected>최고 (12 Mbps)</option>
+                            <option value="10000000">고품질 (10 Mbps)</option>
+                            <option value="8000000">중간 (8 Mbps)</option>
+                        </select>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <input type="checkbox" id="highQualityApplyFilter" checked style="width: auto;">
+                        <span>현재 필터 적용</span>
+                    </label>
+                </div>
+                <button class="btn" onclick="startHighQualityVideo()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); margin-top: 15px;">
+                    ✨ 고화질 비디오 생성
+                </button>
+            </div>
+
             <!-- 진행 상황 -->
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar">
@@ -1038,6 +1085,7 @@
             document.getElementById('thumbnailBtn').disabled = false;
             document.getElementById('slowMotionBtn').disabled = false;
             document.getElementById('reverseBtn').disabled = false;
+            document.getElementById('highQualityBtn').disabled = false;
             document.getElementById('filterToggleBtn').disabled = false;
             document.getElementById('textToggleBtn').disabled = false;
         }
@@ -1314,12 +1362,14 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
             intervalControls.style.display = intervalControls.style.display === 'none' ? 'block' : 'none';
 
             if (intervalControls.style.display === 'block') {
@@ -1361,12 +1411,14 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             intervalControls.style.display = 'none';
             trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
             if (gifControls.style.display === 'block') {
@@ -1446,6 +1498,7 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
@@ -1454,6 +1507,7 @@
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
 
             // 통합 타임라인 토글
             if (timelineSelector.style.display === 'none') {
@@ -1838,12 +1892,14 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
             thumbnailControls.style.display = thumbnailControls.style.display === 'none' ? 'block' : 'none';
         }
 
@@ -2151,6 +2207,7 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
@@ -2158,6 +2215,7 @@
             trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
 
             // 슬로우 모션 옵션과 타임라인 토글
             if (slowMotionControls.style.display === 'none') {
@@ -2178,13 +2236,323 @@
             const thumbnailControls = document.getElementById('thumbnailControls');
             const reverseControls = document.getElementById('reverseControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
+            const highQualityControls = document.getElementById('highQualityControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
             reverseControls.style.display = reverseControls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 고화질 비디오 옵션 표시
+        function showHighQualityOptions() {
+            const intervalControls = document.getElementById('intervalCaptureControls');
+            const gifControls = document.getElementById('gifControls');
+            const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
+            const reverseControls = document.getElementById('reverseControls');
+            const slowMotionControls = document.getElementById('slowMotionControls');
+            const highQualityControls = document.getElementById('highQualityControls');
+
+            intervalControls.style.display = 'none';
+            gifControls.style.display = 'none';
+            trimControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
+            slowMotionControls.style.display = 'none';
+            reverseControls.style.display = 'none';
+            highQualityControls.style.display = highQualityControls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 고화질 비디오 생성 시작
+        function startHighQualityVideo() {
+            generateHighQualityVideo();
+        }
+
+        // 고화질 비디오 생성 (프레임 보간으로 FPS 증가)
+        async function generateHighQualityVideo() {
+            // 비디오 로드 확인
+            if (!videoPlayer.src) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            if (!videoPlayer.duration || isNaN(videoPlayer.duration) || videoPlayer.duration === Infinity) {
+                showStatus('비디오가 제대로 로드되지 않았습니다. 다시 시도해주세요.', 'error');
+                return;
+            }
+
+            if (!videoPlayer.videoWidth || !videoPlayer.videoHeight) {
+                showStatus('비디오 메타데이터를 불러올 수 없습니다. 로컬 파일을 사용해주세요.', 'error');
+                return;
+            }
+
+            // 사용자 설정 가져오기
+            const targetFps = parseInt(document.getElementById('highQualityTargetFps').value) || 60;
+            const quality = document.getElementById('highQualityInterpolation').value || 'high';
+            const bitrate = parseInt(document.getElementById('highQualityBitrate').value) || 12000000;
+            const applyFilter = document.getElementById('highQualityApplyFilter').checked;
+
+            const totalDuration = videoPlayer.duration;
+
+            showStatus(`고화질 비디오 생성 중 (${targetFps}fps, ${quality} 품질)... 시간이 걸릴 수 있습니다.`, 'warning');
+            showProgress(0);
+
+            try {
+                // Canvas 설정
+                const recordCanvas = document.createElement('canvas');
+                recordCanvas.width = videoPlayer.videoWidth;
+                recordCanvas.height = videoPlayer.videoHeight;
+                const recordCtx = recordCanvas.getContext('2d');
+
+                // MediaRecorder 설정
+                const stream = recordCanvas.captureStream(targetFps);
+
+                let mimeType = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm;codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = 'video/webm';
+                    }
+                }
+
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: bitrate
+                });
+
+                const chunks = [];
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
+
+                    await saveFile(blob, filename);
+                    hideProgress();
+                    showStatus('고화질 비디오가 완료되었습니다!', 'success');
+                };
+
+                // 프레임 보간 설정
+                const originalFps = 30; // 일반적인 원본 fps (추정)
+                const originalFrameInterval = 1 / originalFps;
+
+                // 보간 스텝 계산: targetFps / originalFps (예: 60/30 = 2, 120/30 = 4)
+                const fpsMultiplier = targetFps / originalFps;
+                let baseSteps = Math.round(fpsMultiplier);
+
+                // 품질에 따라 보간 스텝 조절
+                let interpolationSteps = baseSteps;
+                if (quality === 'high') {
+                    interpolationSteps = Math.round(baseSteps * 1.5); // 1.5배 더 부드럽게
+                } else if (quality === 'ultra') {
+                    interpolationSteps = Math.round(baseSteps * 2); // 2배 더 부드럽게
+                }
+                interpolationSteps = Math.max(interpolationSteps, 2); // 최소 2개 보간 프레임
+
+                console.log(`=== 고화질 비디오 생성 (프레임 보간) ===`);
+                console.log(`원본 FPS: ${originalFps}fps`);
+                console.log(`목표 FPS: ${targetFps}fps (${fpsMultiplier}배)`);
+                console.log(`보간 품질: ${quality}`);
+                console.log(`보간 스텝: ${interpolationSteps}개 (기본 ${baseSteps}개)`);
+                console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
+
+                // 전체 비디오에 대한 프레임 시간 배열 생성
+                let frameTimes = [];
+                const allFrameTimes = [];
+
+                for (let t = 0; t < totalDuration; t += originalFrameInterval) {
+                    allFrameTimes.push(t);
+                }
+
+                // 모든 프레임에 보간 적용
+                for (let i = 0; i < allFrameTimes.length; i++) {
+                    const currentTime = allFrameTimes[i];
+                    const nextTime = allFrameTimes[i + 1] || currentTime;
+
+                    frameTimes.push({
+                        time: currentTime,
+                        nextTime: nextTime,
+                        section: 'interpolated',
+                        steps: interpolationSteps
+                    });
+                }
+
+                const originalFrameCount = allFrameTimes.length;
+                const totalOutputFrames = originalFrameCount * interpolationSteps;
+
+                console.log(`원본 프레임 수: ${originalFrameCount}개`);
+                console.log(`출력 프레임 수: ${totalOutputFrames}개 (${originalFrameCount} × ${interpolationSteps})`);
+                console.log(`예상 처리 시간: ${(totalOutputFrames / targetFps).toFixed(1)}초 분량`);
+                console.log('========================');
+
+                // 총 프레임 수 계산 (보간 프레임 포함)
+                let totalFrames = frameTimes.reduce((sum, frame) => {
+                    return sum + frame.steps;
+                }, 0);
+
+                let currentFrameIndex = 0;
+                let currentStep = 0;
+                let processedFrames = 0;
+
+                // 프레임 캡처 간격 (ms)
+                const outputFrameInterval = 1000 / targetFps;
+
+                // 프레임 보간을 위한 임시 캔버스
+                const prevFrameCanvas = document.createElement('canvas');
+                const nextFrameCanvas = document.createElement('canvas');
+                prevFrameCanvas.width = nextFrameCanvas.width = recordCanvas.width;
+                prevFrameCanvas.height = nextFrameCanvas.height = recordCanvas.height;
+                const prevFrameCtx = prevFrameCanvas.getContext('2d');
+                const nextFrameCtx = nextFrameCanvas.getContext('2d');
+
+                let prevFrameLoaded = false;
+                let nextFrameLoaded = false;
+                let waitingForSeek = false;
+
+                const captureFrame = () => {
+                    if (currentFrameIndex >= frameTimes.length) {
+                        mediaRecorder.stop();
+                        return;
+                    }
+
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    // 프레임 보간 처리
+                    if (currentStep === 0) {
+                        // 첫 번째 스텝: 현재 프레임과 다음 프레임 로드
+                        prevFrameLoaded = false;
+                        nextFrameLoaded = false;
+
+                        // 현재 프레임 로드
+                        waitingForSeek = true;
+                        videoPlayer.currentTime = Math.min(frameInfo.time, totalDuration);
+                    } else {
+                        // 중간 스텝: 보간 프레임 생성
+                        renderInterpolatedFrame();
+                    }
+                };
+
+                const renderInterpolatedFrame = () => {
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    // Alpha 값 계산 (0.0 = 이전 프레임, 1.0 = 다음 프레임)
+                    const alpha = currentStep / frameInfo.steps;
+
+                    // 두 프레임을 블렌딩하여 중간 프레임 생성
+                    recordCtx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
+
+                    // 필터 적용 (옵션)
+                    if (applyFilter) {
+                        recordCtx.filter = getCurrentFilterString();
+                    }
+
+                    // 이전 프레임 (1 - alpha 비율)
+                    recordCtx.globalAlpha = 1 - alpha;
+                    recordCtx.drawImage(prevFrameCanvas, 0, 0);
+
+                    // 다음 프레임 (alpha 비율)
+                    recordCtx.globalAlpha = alpha;
+                    recordCtx.drawImage(nextFrameCanvas, 0, 0);
+
+                    // 복원
+                    recordCtx.globalAlpha = 1.0;
+                    recordCtx.filter = 'none';
+
+                    processedFrames++;
+                    const progress = (processedFrames / totalFrames) * 100;
+                    showProgress(progress);
+
+                    currentStep++;
+
+                    if (currentStep >= frameInfo.steps) {
+                        // 다음 프레임으로
+                        currentFrameIndex++;
+                        currentStep = 0;
+                        prevFrameLoaded = false;
+                        nextFrameLoaded = false;
+                    }
+
+                    if (currentFrameIndex < frameTimes.length) {
+                        setTimeout(() => {
+                            captureFrame();
+                        }, outputFrameInterval);
+                    } else {
+                        console.log('✅ 고화질 비디오 처리 완료!');
+                        mediaRecorder.stop();
+                        videoPlayer.removeEventListener('seeked', onSeeked);
+                    }
+                };
+
+                const renderFrame = () => {
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    // 디버깅: 현재 처리 중인 프레임 정보
+                    if (processedFrames % 60 === 0) {  // 60프레임마다 로그
+                        console.log(`🎬 프레임 ${processedFrames}/${totalFrames} - 시간: ${frameInfo.time.toFixed(2)}s (진행률: ${(processedFrames/totalFrames*100).toFixed(1)}%)`);
+                    }
+
+                    // 프레임 저장 후 다음 프레임 로드
+                    if (!prevFrameLoaded) {
+                        // 현재 프레임을 prevFrameCanvas에 저장
+                        if (applyFilter) {
+                            prevFrameCtx.filter = getCurrentFilterString();
+                        }
+                        prevFrameCtx.drawImage(videoPlayer, 0, 0, prevFrameCanvas.width, prevFrameCanvas.height);
+                        prevFrameCtx.filter = 'none';
+                        prevFrameLoaded = true;
+
+                        // 다음 프레임 로드
+                        if (frameInfo.nextTime !== frameInfo.time) {
+                            waitingForSeek = true;
+                            videoPlayer.currentTime = Math.min(frameInfo.nextTime, totalDuration);
+                        } else {
+                            // 마지막 프레임: nextFrame도 현재 프레임 사용
+                            if (applyFilter) {
+                                nextFrameCtx.filter = getCurrentFilterString();
+                            }
+                            nextFrameCtx.drawImage(videoPlayer, 0, 0, nextFrameCanvas.width, nextFrameCanvas.height);
+                            nextFrameCtx.filter = 'none';
+                            nextFrameLoaded = true;
+                            renderInterpolatedFrame();
+                        }
+                    } else if (!nextFrameLoaded) {
+                        // 다음 프레임을 nextFrameCanvas에 저장
+                        if (applyFilter) {
+                            nextFrameCtx.filter = getCurrentFilterString();
+                        }
+                        nextFrameCtx.drawImage(videoPlayer, 0, 0, nextFrameCanvas.width, nextFrameCanvas.height);
+                        nextFrameCtx.filter = 'none';
+                        nextFrameLoaded = true;
+
+                        // 두 프레임 모두 로드됨 → 보간 시작
+                        renderInterpolatedFrame();
+                    }
+                };
+
+                const onSeeked = () => {
+                    if (!waitingForSeek) return;
+                    waitingForSeek = false;
+                    renderFrame();
+                };
+
+                videoPlayer.addEventListener('seeked', onSeeked);
+
+                mediaRecorder.start();
+                captureFrame();
+
+            } catch (error) {
+                console.error('고화질 비디오 생성 오류:', error);
+                showStatus(`오류가 발생했습니다: ${error.message}`, 'error');
+                hideProgress();
+            }
         }
 
         // 트림 시작
