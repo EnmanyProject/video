@@ -2357,20 +2357,14 @@
                 const fpsMultiplier = targetFps / originalFps;
                 let baseSteps = Math.round(fpsMultiplier);
 
-                // 품질에 따라 보간 스텝 조절
-                let interpolationSteps = baseSteps;
-                if (quality === 'high') {
-                    interpolationSteps = Math.round(baseSteps * 1.5); // 1.5배 더 부드럽게
-                } else if (quality === 'ultra') {
-                    interpolationSteps = Math.round(baseSteps * 2); // 2배 더 부드럽게
-                }
-                interpolationSteps = Math.max(interpolationSteps, 2); // 최소 2개 보간 프레임
+                // 보간 스텝: 파워슬로우와 동일하게 24개 프레임 (최고품질)
+                const interpolationSteps = 24;
 
-                console.log(`=== 고화질 비디오 생성 (프레임 보간) ===`);
+                console.log(`=== 고화질 비디오 생성 (프레임 보간 + Easing + Motion Blur) ===`);
                 console.log(`원본 FPS: ${originalFps}fps`);
                 console.log(`목표 FPS: ${targetFps}fps (${fpsMultiplier}배)`);
                 console.log(`보간 품질: ${quality}`);
-                console.log(`보간 스텝: ${interpolationSteps}개 (기본 ${baseSteps}개)`);
+                console.log(`보간 스텝: ${interpolationSteps}개 (최고품질)`);
                 console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
 
                 // 전체 비디오에 대한 프레임 시간 배열 생성
@@ -2452,24 +2446,41 @@
                 const renderInterpolatedFrame = () => {
                     const frameInfo = frameTimes[currentFrameIndex];
 
-                    // Alpha 값 계산 (0.0 = 이전 프레임, 1.0 = 다음 프레임)
-                    const alpha = currentStep / frameInfo.steps;
+                    // Linear alpha
+                    const linearAlpha = currentStep / frameInfo.steps;
+
+                    // Easing 적용: ease-in-out cubic (파워슬로우와 동일)
+                    const easedAlpha = easeInOutCubic(linearAlpha);
 
                     // 두 프레임을 블렌딩하여 중간 프레임 생성
                     recordCtx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
 
-                    // 필터 적용 (옵션)
-                    if (applyFilter) {
-                        recordCtx.filter = getCurrentFilterString();
+                    // 고품질 렌더링 설정
+                    recordCtx.imageSmoothingEnabled = true;
+                    recordCtx.imageSmoothingQuality = 'high';
+
+                    // Motion Blur 효과 (파워슬로우와 동일)
+                    const blurStrength = 0.15;
+                    const blurLayers = 3;
+
+                    // Motion blur: 여러 레이어를 겹쳐서 블러 효과
+                    for (let layer = 0; layer < blurLayers; layer++) {
+                        const layerOffset = (layer - Math.floor(blurLayers / 2)) * blurStrength;
+                        const layerAlpha = Math.max(0, Math.min(1, easedAlpha + layerOffset));
+
+                        // Prev 프레임 레이어
+                        const prevWeight = (1 - layerAlpha) / blurLayers;
+                        recordCtx.globalAlpha = prevWeight;
+                        if (applyFilter) {
+                            recordCtx.filter = getCurrentFilterString();
+                        }
+                        recordCtx.drawImage(prevFrameCanvas, 0, 0);
+
+                        // Next 프레임 레이어
+                        const nextWeight = layerAlpha / blurLayers;
+                        recordCtx.globalAlpha = nextWeight;
+                        recordCtx.drawImage(nextFrameCanvas, 0, 0);
                     }
-
-                    // 이전 프레임 (1 - alpha 비율)
-                    recordCtx.globalAlpha = 1 - alpha;
-                    recordCtx.drawImage(prevFrameCanvas, 0, 0);
-
-                    // 다음 프레임 (alpha 비율)
-                    recordCtx.globalAlpha = alpha;
-                    recordCtx.drawImage(nextFrameCanvas, 0, 0);
 
                     // 복원
                     recordCtx.globalAlpha = 1.0;
@@ -3174,11 +3185,10 @@
                 // - 슬로우 구간: 프레임 사이에 중간 프레임 보간 (부드러운 슬로우)
 
                 const frameInterval = 1 / fps;
-                // 보간 스텝 수를 3배로 증가 (더 부드러운 슬로우 모션)
-                const baseSteps = Math.round(1 / slowSpeed);
-                const interpolationSteps = Math.max(baseSteps * 3, 6); // 최소 6개 보간 프레임
+                // 보간 스텝 수: 파워슬로우와 동일하게 24개 프레임 (최고품질)
+                const interpolationSteps = 24;
 
-                console.log(`슬로우 속도: ${slowSpeed}x → 기본 스텝: ${baseSteps}, 보간 스텝: ${interpolationSteps}`);
+                console.log(`슬로우 속도: ${slowSpeed}x → 보간 스텝: ${interpolationSteps} (최고품질)`);
 
                 // 원본 프레임 시간 배열 생성
                 const originalFps = 30; // 일반적인 원본 fps (추정)
@@ -3309,22 +3319,39 @@
                 const renderInterpolatedFrame = () => {
                     const frameInfo = frameTimes[currentFrameIndex];
 
-                    // Alpha 값 계산 (0.0 = 이전 프레임, 1.0 = 다음 프레임)
-                    const alpha = currentStep / frameInfo.steps;
+                    // Linear alpha
+                    const linearAlpha = currentStep / frameInfo.steps;
+
+                    // Easing 적용: 파워슬로우와 동일한 ease-in-out cubic
+                    const easedAlpha = easeInOutCubic(linearAlpha);
 
                     // 두 프레임을 블렌딩하여 중간 프레임 생성
                     recordCtx.clearRect(0, 0, recordCanvas.width, recordCanvas.height);
 
-                    // 필터 적용
-                    recordCtx.filter = getCurrentFilterString();
+                    // 고품질 렌더링 설정
+                    recordCtx.imageSmoothingEnabled = true;
+                    recordCtx.imageSmoothingQuality = 'high';
 
-                    // 이전 프레임 (1 - alpha 비율)
-                    recordCtx.globalAlpha = 1 - alpha;
-                    recordCtx.drawImage(prevFrameCanvas, 0, 0);
+                    // Motion Blur 효과: 파워슬로우와 동일한 알고리즘
+                    const blurStrength = 0.15;
+                    const blurLayers = 3;
 
-                    // 다음 프레임 (alpha 비율)
-                    recordCtx.globalAlpha = alpha;
-                    recordCtx.drawImage(nextFrameCanvas, 0, 0);
+                    // Motion blur: 여러 레이어를 겹쳐서 블러 효과
+                    for (let layer = 0; layer < blurLayers; layer++) {
+                        const layerOffset = (layer - Math.floor(blurLayers / 2)) * blurStrength;
+                        const layerAlpha = Math.max(0, Math.min(1, easedAlpha + layerOffset));
+
+                        // Prev 프레임 레이어
+                        const prevWeight = (1 - layerAlpha) / blurLayers;
+                        recordCtx.globalAlpha = prevWeight;
+                        recordCtx.filter = getCurrentFilterString();
+                        recordCtx.drawImage(prevFrameCanvas, 0, 0);
+
+                        // Next 프레임 레이어
+                        const nextWeight = layerAlpha / blurLayers;
+                        recordCtx.globalAlpha = nextWeight;
+                        recordCtx.drawImage(nextFrameCanvas, 0, 0);
+                    }
 
                     // 복원
                     recordCtx.globalAlpha = 1.0;
