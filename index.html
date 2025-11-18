@@ -2792,60 +2792,76 @@
                     showStatus('슬로우 모션 비디오가 완료되었습니다!', 'success');
                 };
 
-                // 3개 구간 계산
-                // 구간 1: 0 ~ slowStartTime (정상)
-                // 구간 2: slowStartTime ~ slowEndTime (슬로우)
-                // 구간 3: slowEndTime ~ totalDuration (정상)
+                // 프레임 반복 방식으로 슬로우 모션 생성
+                // - 정상 구간: 원본 프레임 그대로 (원본 fps 유지)
+                // - 슬로우 구간: 원본 프레임을 여러 번 반복 (부드러운 슬로우)
 
                 const frameInterval = 1 / fps;
-                let currentFrame = 0;
-                let totalFrames = 0;
+                const repeatCount = Math.round(1 / slowSpeed); // 프레임 반복 횟수 (예: 0.5x = 2번, 0.25x = 4번)
 
-                // 구간 1 프레임 수 (정상 속도)
-                const section1Frames = Math.floor(slowStartTime * fps);
-                // 구간 2 프레임 수 (슬로우 속도 - 더 많은 프레임)
-                const slowDuration = slowEndTime - slowStartTime;
-                const section2Frames = Math.floor((slowDuration / slowSpeed) * fps);
-                // 구간 3 프레임 수 (정상 속도)
-                const section3Frames = Math.floor((totalDuration - slowEndTime) * fps);
+                // 원본 프레임 시간 배열 생성
+                const originalFps = 30; // 일반적인 원본 fps (추정)
+                const originalFrameInterval = 1 / originalFps;
 
-                totalFrames = section1Frames + section2Frames + section3Frames;
+                let frameTimes = [];
+
+                // 구간 1: 정상 속도 (원본 프레임 사용)
+                for (let t = 0; t < slowStartTime; t += originalFrameInterval) {
+                    frameTimes.push({ time: t, repeat: 1 });
+                }
+
+                // 구간 2: 슬로우 모션 (프레임 반복)
+                for (let t = slowStartTime; t < slowEndTime; t += originalFrameInterval) {
+                    frameTimes.push({ time: t, repeat: repeatCount });
+                }
+
+                // 구간 3: 정상 속도 (원본 프레임 사용)
+                for (let t = slowEndTime; t < totalDuration; t += originalFrameInterval) {
+                    frameTimes.push({ time: t, repeat: 1 });
+                }
+
+                let currentFrameIndex = 0;
+                let currentRepeat = 0;
+                let totalFrames = frameTimes.reduce((sum, frame) => sum + frame.repeat, 0);
+                let processedFrames = 0;
 
                 const captureFrame = () => {
-                    if (currentFrame >= totalFrames) {
+                    if (currentFrameIndex >= frameTimes.length) {
                         mediaRecorder.stop();
                         return;
                     }
 
-                    let time;
+                    const frameInfo = frameTimes[currentFrameIndex];
 
-                    if (currentFrame < section1Frames) {
-                        // 구간 1: 정상 속도
-                        time = currentFrame * frameInterval;
-                    } else if (currentFrame < section1Frames + section2Frames) {
-                        // 구간 2: 슬로우 모션
-                        const slowFrame = currentFrame - section1Frames;
-                        time = slowStartTime + (slowFrame * frameInterval * slowSpeed);
+                    // 첫 반복일 때만 비디오 시간 이동
+                    if (currentRepeat === 0) {
+                        videoPlayer.currentTime = Math.min(frameInfo.time, totalDuration);
                     } else {
-                        // 구간 3: 정상 속도
-                        const normalFrame = currentFrame - section1Frames - section2Frames;
-                        time = slowEndTime + (normalFrame * frameInterval);
+                        // 프레임 반복 시 seeked 이벤트 없이 바로 그리기
+                        renderFrame();
                     }
-
-                    videoPlayer.currentTime = Math.min(time, totalDuration);
                 };
 
-                const onSeeked = () => {
+                const renderFrame = () => {
                     // 필터 적용 및 프레임 그리기
                     recordCtx.filter = getCurrentFilterString();
                     recordCtx.drawImage(videoPlayer, 0, 0, recordCanvas.width, recordCanvas.height);
                     recordCtx.filter = 'none';
 
-                    currentFrame++;
-                    const progress = (currentFrame / totalFrames) * 100;
+                    processedFrames++;
+                    const progress = (processedFrames / totalFrames) * 100;
                     showProgress(progress);
 
-                    if (currentFrame < totalFrames) {
+                    currentRepeat++;
+                    const frameInfo = frameTimes[currentFrameIndex];
+
+                    if (currentRepeat >= frameInfo.repeat) {
+                        // 다음 프레임으로
+                        currentFrameIndex++;
+                        currentRepeat = 0;
+                    }
+
+                    if (currentFrameIndex < frameTimes.length) {
                         setTimeout(() => {
                             captureFrame();
                         }, 0);
@@ -2853,6 +2869,10 @@
                         mediaRecorder.stop();
                         videoPlayer.removeEventListener('seeked', onSeeked);
                     }
+                };
+
+                const onSeeked = () => {
+                    renderFrame();
                 };
 
                 // seeked 이벤트 리스너 등록
