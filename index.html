@@ -460,7 +460,7 @@
                     <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; font-size: 16px; padding: 10px 20px;">
                         ⚡ 파워슬로우 재생 OFF
                     </button>
-                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 24개 프레임 + Motion Blur)</span>
+                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 단순 보간 4개 프레임)</span>
                 </div>
 
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
@@ -2493,14 +2493,14 @@
                 const fpsMultiplier = targetFps / originalFps;
                 let baseSteps = Math.round(fpsMultiplier);
 
-                // 보간 스텝: 파워슬로우와 동일하게 24개 프레임 (최고품질)
-                const interpolationSteps = 24;
+                // 보간 스텝: 단순 보간 4개 (떨림 방지)
+                const interpolationSteps = 4;
 
-                console.log(`=== 고화질 비디오 생성 (프레임 보간 + Easing + Motion Blur) ===`);
+                console.log(`=== 고화질 비디오 생성 (단순 프레임 보간) ===`);
                 console.log(`원본 FPS: ${originalFps}fps`);
                 console.log(`목표 FPS: ${targetFps}fps (${fpsMultiplier}배)`);
                 console.log(`보간 품질: ${quality}`);
-                console.log(`보간 스텝: ${interpolationSteps}개 (최고품질)`);
+                console.log(`보간 스텝: ${interpolationSteps}개 (단순 보간)`);
                 console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
 
                 // 전체 비디오에 대한 프레임 시간 배열 생성
@@ -2595,9 +2595,9 @@
                     recordCtx.imageSmoothingEnabled = true;
                     recordCtx.imageSmoothingQuality = 'high';
 
-                    // Motion Blur 효과 (파워슬로우와 동일)
-                    const blurStrength = 0.15;
-                    const blurLayers = 3;
+                    // 단순 Alpha Blending (Motion Blur 제거)
+                    const blurStrength = 0;
+                    const blurLayers = 1;
 
                     // Motion blur: 여러 레이어를 겹쳐서 블러 효과
                     for (let layer = 0; layer < blurLayers; layer++) {
@@ -3349,10 +3349,10 @@
                 // - 슬로우 구간: 프레임 사이에 중간 프레임 보간 (부드러운 슬로우)
 
                 const frameInterval = 1 / fps;
-                // 보간 스텝 수: 파워슬로우와 동일하게 24개 프레임 (최고품질)
-                const interpolationSteps = 24;
+                // 보간 스텝 수: 단순 보간 4개 (떨림 방지)
+                const interpolationSteps = 4;
 
-                console.log(`슬로우 속도: ${slowSpeed}x → 보간 스텝: ${interpolationSteps} (최고품질)`);
+                console.log(`슬로우 속도: ${slowSpeed}x → 보간 스텝: ${interpolationSteps} (단순 보간)`);
 
                 // 원본 프레임 시간 배열 생성
                 const originalFps = 30; // 일반적인 원본 fps (추정)
@@ -3496,9 +3496,9 @@
                     recordCtx.imageSmoothingEnabled = true;
                     recordCtx.imageSmoothingQuality = 'high';
 
-                    // Motion Blur 효과: 파워슬로우와 동일한 알고리즘
-                    const blurStrength = 0.15;
-                    const blurLayers = 3;
+                    // 단순 Alpha Blending (Motion Blur 제거)
+                    const blurStrength = 0;
+                    const blurLayers = 1;
 
                     // Motion blur: 여러 레이어를 겹쳐서 블러 효과
                     for (let layer = 0; layer < blurLayers; layer++) {
@@ -4046,7 +4046,7 @@
             nextFrameData: null,
             frameCaptureCanvas: null,
             frameCaptureCtx: null,
-            interpolationSteps: 24,  // 최고품질 24개 프레임 (개선)
+            interpolationSteps: 4,  // 단순 보간 4개 프레임 (떨림 방지)
             currentStep: 0,
             targetFrameTime: 0,
             wasPlaying: false,
@@ -4082,7 +4082,7 @@
             // 품질에 따른 보간 스텝 설정
             const speed = 0.25;  // 4배 슬로우 고정
             const quality = 'ultra';
-            let interpolationSteps = 24;  // 개선: 24개 프레임으로 더 부드럽게
+            let interpolationSteps = 4;  // 단순 보간: 4개 프레임 (떨림 방지)
 
             // 상태 초기화
             powerSlowState.speed = speed;
@@ -4172,7 +4172,7 @@
             toggleBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
 
             const status = document.getElementById('powerSlowStatus');
-            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 24개 프레임 + Motion Blur)';
+            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 단순 보간 4개 프레임)';
             status.style.color = '#666';
             status.style.fontWeight = 'normal';
 
@@ -4280,9 +4280,9 @@
             previewCtx.imageSmoothingEnabled = true;
             previewCtx.imageSmoothingQuality = 'high';
 
-            // Motion Blur 효과: 현재 프레임과 이전/이후 프레임을 겹침
-            const blurStrength = 0.15;  // 블러 강도
-            const blurLayers = 3;  // 블러 레이어 수
+            // 단순 Alpha Blending (Motion Blur 제거)
+            const blurStrength = 0;  // 블러 제거
+            const blurLayers = 1;  // 단일 레이어 (떨림 방지)
 
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
