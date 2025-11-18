@@ -2805,25 +2805,47 @@
 
                 let frameTimes = [];
 
+                // 디버깅: 구간 정보 출력
+                console.log('=== 슬로우 모션 구간 정보 ===');
+                console.log(`총 비디오 길이: ${totalDuration.toFixed(2)}초`);
+                console.log(`슬로우 시작: ${slowStartTime.toFixed(2)}초`);
+                console.log(`슬로우 종료: ${slowEndTime.toFixed(2)}초`);
+                console.log(`슬로우 속도: ${slowSpeed}x (반복 횟수: ${repeatCount})`);
+
                 // 구간 1: 정상 속도 (원본 프레임 사용)
+                let section1Count = 0;
                 for (let t = 0; t < slowStartTime; t += originalFrameInterval) {
                     frameTimes.push({ time: t, repeat: 1 });
+                    section1Count++;
                 }
 
                 // 구간 2: 슬로우 모션 (프레임 반복)
+                let section2Count = 0;
                 for (let t = slowStartTime; t < slowEndTime; t += originalFrameInterval) {
                     frameTimes.push({ time: t, repeat: repeatCount });
+                    section2Count++;
                 }
 
                 // 구간 3: 정상 속도 (원본 프레임 사용)
+                let section3Count = 0;
                 for (let t = slowEndTime; t < totalDuration; t += originalFrameInterval) {
                     frameTimes.push({ time: t, repeat: 1 });
+                    section3Count++;
                 }
+
+                console.log(`구간 1 (정상): ${section1Count}개 프레임 (반복 1)`);
+                console.log(`구간 2 (슬로우): ${section2Count}개 프레임 (반복 ${repeatCount})`);
+                console.log(`구간 3 (정상): ${section3Count}개 프레임 (반복 1)`);
+                console.log(`총 프레임 수: ${frameTimes.length}개`);
+                console.log('========================');
 
                 let currentFrameIndex = 0;
                 let currentRepeat = 0;
                 let totalFrames = frameTimes.reduce((sum, frame) => sum + frame.repeat, 0);
                 let processedFrames = 0;
+
+                // 프레임 캡처 간격 (ms)
+                const outputFrameInterval = 1000 / fps; // 예: 60fps = 16.67ms
 
                 const captureFrame = () => {
                     if (currentFrameIndex >= frameTimes.length) {
@@ -2852,8 +2874,8 @@
                     const progress = (processedFrames / totalFrames) * 100;
                     showProgress(progress);
 
-                    currentRepeat++;
                     const frameInfo = frameTimes[currentFrameIndex];
+                    currentRepeat++;
 
                     if (currentRepeat >= frameInfo.repeat) {
                         // 다음 프레임으로
@@ -2862,9 +2884,10 @@
                     }
 
                     if (currentFrameIndex < frameTimes.length) {
+                        // 고정된 간격으로 다음 프레임 캡처
                         setTimeout(() => {
                             captureFrame();
-                        }, 0);
+                        }, outputFrameInterval);
                     } else {
                         mediaRecorder.stop();
                         videoPlayer.removeEventListener('seeked', onSeeked);
