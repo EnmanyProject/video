@@ -16,7 +16,7 @@ def test_powerslow_console():
         page.on('console', lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
 
         print("📖 페이지 로드 중...")
-        page.goto('http://localhost:8000')
+        page.goto('https://enmanyproject.github.io/video/')
         page.wait_for_load_state('networkidle')
 
         print("✅ 페이지 로드 완료")
