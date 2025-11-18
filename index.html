@@ -460,7 +460,7 @@
                     <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; font-size: 16px; padding: 10px 20px;">
                         ⚡ 파워슬로우 재생 OFF
                     </button>
-                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 12개 프레임)</span>
+                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 24개 프레임 + Motion Blur)</span>
                 </div>
 
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
@@ -3826,10 +3826,11 @@
             nextFrameData: null,
             frameCaptureCanvas: null,
             frameCaptureCtx: null,
-            interpolationSteps: 12,  // 최고품질 12개 프레임
+            interpolationSteps: 24,  // 최고품질 24개 프레임 (개선)
             currentStep: 0,
             targetFrameTime: 0,
-            wasPlaying: false
+            wasPlaying: false,
+            motionBlurFrames: []  // Motion blur를 위한 프레임 버퍼
         };
 
         // 파워슬로우 재생 토글
@@ -3849,13 +3850,19 @@
             }
         }
 
+        // Easing 함수 (ease-in-out): 자연스러운 보간
+        function easeInOutCubic(t) {
+            return t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
         // 파워슬로우 재생 시작
         function startPowerSlowPlayback() {
             // 품질에 따른 보간 스텝 설정
             const speed = 0.25;  // 4배 슬로우 고정
             const quality = 'ultra';
-            let baseSteps = Math.round(1 / speed);
-            let interpolationSteps = Math.round(baseSteps * 3);  // 3배 → 12개 프레임
+            let interpolationSteps = 24;  // 개선: 24개 프레임으로 더 부드럽게
 
             // 상태 초기화
             powerSlowState.speed = speed;
@@ -3866,6 +3873,7 @@
             powerSlowState.lastFrameTime = performance.now();
             powerSlowState.targetFrameTime = videoPlayer.currentTime;
             powerSlowState.wasPlaying = !videoPlayer.paused;
+            powerSlowState.motionBlurFrames = [];  // 초기화
 
             // Canvas 초기화
             if (!powerSlowState.frameCaptureCanvas) {
@@ -3944,7 +3952,7 @@
             toggleBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
 
             const status = document.getElementById('powerSlowStatus');
-            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 12개 프레임)';
+            status.textContent = '재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 최고품질 24개 프레임 + Motion Blur)';
             status.style.color = '#666';
             status.style.fontWeight = 'normal';
 
@@ -4019,11 +4027,13 @@
             powerSlowState.animationId = requestAnimationFrame(powerSlowRenderLoop);
         }
 
-        // 파워슬로우 프레임 렌더링 (Alpha Blending)
+        // 파워슬로우 프레임 렌더링 (개선: Easing + Motion Blur)
         function renderPowerSlowFrame() {
             if (!powerSlowState.prevFrameData || !powerSlowState.nextFrameData) {
                 // 첫 프레임: 현재 프레임만 표시
                 previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                previewCtx.imageSmoothingEnabled = true;
+                previewCtx.imageSmoothingQuality = 'high';
                 previewCtx.drawImage(videoPlayer, 0, 0, previewCanvas.width, previewCanvas.height);
 
                 // 초기 프레임 데이터 설정
@@ -4036,38 +4046,62 @@
                 return;
             }
 
-            // Alpha 값 계산 (0.0 = prev 프레임, 1.0 = next 프레임)
-            const alpha = powerSlowState.currentStep / powerSlowState.interpolationSteps;
+            // Linear alpha
+            const linearAlpha = powerSlowState.currentStep / powerSlowState.interpolationSteps;
 
-            // previewCanvas에 블렌딩 결과 그리기
+            // Easing 적용: 자연스러운 가속/감속 (ease-in-out)
+            const easedAlpha = easeInOutCubic(linearAlpha);
+
+            // previewCanvas 크기 설정
             previewCanvas.width = videoPlayer.videoWidth;
             previewCanvas.height = videoPlayer.videoHeight;
+
+            // 고품질 렌더링 설정
+            previewCtx.imageSmoothingEnabled = true;
+            previewCtx.imageSmoothingQuality = 'high';
+
+            // Motion Blur 효과: 현재 프레임과 이전/이후 프레임을 겹침
+            const blurStrength = 0.15;  // 블러 강도
+            const blurLayers = 3;  // 블러 레이어 수
+
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
             // 임시 canvas로 블렌딩
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = previewCanvas.width;
             tempCanvas.height = previewCanvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
+            const tempCtx = tempCanvas.getContext('2d', { alpha: true });
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
 
-            // prev 프레임 그리기
-            tempCtx.putImageData(powerSlowState.prevFrameData, 0, 0);
-            tempCtx.globalAlpha = 1 - alpha;
-            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-            previewCtx.drawImage(tempCanvas, 0, 0);
+            // Motion blur: 여러 레이어를 겹쳐서 블러 효과
+            for (let layer = 0; layer < blurLayers; layer++) {
+                const layerOffset = (layer - Math.floor(blurLayers / 2)) * blurStrength;
+                const layerAlpha = Math.max(0, Math.min(1, easedAlpha + layerOffset));
 
-            // next 프레임 그리기
-            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-            tempCtx.globalAlpha = 1.0;
-            tempCtx.putImageData(powerSlowState.nextFrameData, 0, 0);
-            previewCtx.globalAlpha = alpha;
-            previewCtx.drawImage(tempCanvas, 0, 0);
+                // Prev 프레임 레이어
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.putImageData(powerSlowState.prevFrameData, 0, 0);
+
+                const prevWeight = (1 - layerAlpha) / blurLayers;
+                previewCtx.globalAlpha = prevWeight;
+                previewCtx.drawImage(tempCanvas, 0, 0);
+
+                // Next 프레임 레이어
+                tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                tempCtx.putImageData(powerSlowState.nextFrameData, 0, 0);
+
+                const nextWeight = layerAlpha / blurLayers;
+                previewCtx.globalAlpha = nextWeight;
+                previewCtx.drawImage(tempCanvas, 0, 0);
+            }
 
             // 복원
             previewCtx.globalAlpha = 1.0;
 
-            // 디버그 정보 표시 (옵션)
-            if (powerSlowState.currentStep % 10 === 0) {
-                console.log(`⚡ 프레임 보간: ${(alpha * 100).toFixed(0)}% (스텝 ${powerSlowState.currentStep}/${powerSlowState.interpolationSteps})`);
+            // 디버그 정보 표시 (간헐적)
+            if (powerSlowState.currentStep % 12 === 0) {
+                console.log(`⚡ 프레임 보간: Linear ${(linearAlpha * 100).toFixed(0)}% → Eased ${(easedAlpha * 100).toFixed(0)}% (스텝 ${powerSlowState.currentStep}/${powerSlowState.interpolationSteps})`);
             }
         }
 
