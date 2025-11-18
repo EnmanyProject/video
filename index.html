@@ -455,6 +455,49 @@
                 </div>
                 <canvas id="canvas"></canvas>
 
+                <!-- 파워슬로우 재생 토글 버튼 -->
+                <div style="margin-top: 10px;">
+                    <button class="btn" onclick="togglePowerSlowControls()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold;">
+                        ⚡ 파워슬로우 재생 ▼
+                    </button>
+                </div>
+
+                <!-- 파워슬로우 재생 컨트롤 -->
+                <div id="powerSlowControls" style="display: none; margin-top: 10px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div style="color: white; font-weight: bold; font-size: 16px;">⚡ 파워슬로우 재생</div>
+
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="color: white; font-size: 14px;">속도:</label>
+                            <select id="powerSlowSpeed" style="padding: 5px 10px; border-radius: 4px; border: none; font-size: 14px;">
+                                <option value="0.5">0.5x (2배 슬로우)</option>
+                                <option value="0.25" selected>0.25x (4배 슬로우)</option>
+                                <option value="0.1">0.1x (10배 슬로우)</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="color: white; font-size: 14px;">품질:</label>
+                            <select id="powerSlowQuality" style="padding: 5px 10px; border-radius: 4px; border: none; font-size: 14px;">
+                                <option value="normal">보통</option>
+                                <option value="high" selected>고품질</option>
+                                <option value="ultra">최고품질</option>
+                            </select>
+                        </div>
+
+                        <button class="btn" id="powerSlowPlayBtn" onclick="startPowerSlowPlayback()" style="background: #4CAF50; color: white; padding: 8px 20px;">
+                            ▶ 재생
+                        </button>
+                        <button class="btn" id="powerSlowStopBtn" onclick="stopPowerSlowPlayback()" style="background: #f44336; color: white; padding: 8px 20px; display: none;">
+                            ⏹ 정지
+                        </button>
+
+                        <div style="color: white; font-size: 12px; opacity: 0.9;">
+                            💡 실시간 프레임 보간으로 부드러운 슬로우 모션 재생
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
                 <div id="timelineRangeSelector" style="display: none; margin-top: 5px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1088,6 +1131,7 @@
             document.getElementById('highQualityBtn').disabled = false;
             document.getElementById('filterToggleBtn').disabled = false;
             document.getElementById('textToggleBtn').disabled = false;
+            document.getElementById('powerSlowToggleBtn').disabled = false;
         }
 
         // 재생 속도 변경
@@ -3802,6 +3846,245 @@
             // 프리뷰 시작
             animatePreview();
         });
+
+        // ===============================
+        // 파워슬로우 재생 (실시간 프레임 보간)
+        // ===============================
+
+        let powerSlowState = {
+            isPlaying: false,
+            animationId: null,
+            speed: 0.25,
+            quality: 'high',
+            lastFrameTime: 0,
+            currentAlpha: 0,
+            prevFrameData: null,
+            nextFrameData: null,
+            frameCaptureCanvas: null,
+            frameCaptureCtx: null,
+            interpolationSteps: 4,
+            currentStep: 0,
+            targetFrameTime: 0
+        };
+
+        // 파워슬로우 컨트롤 토글
+        function togglePowerSlowControls() {
+            const controls = document.getElementById('powerSlowControls');
+            const toggleBtn = document.getElementById('powerSlowToggleBtn');
+
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+                toggleBtn.textContent = '⚡ 파워슬로우 재생 ▲';
+            } else {
+                controls.style.display = 'none';
+                toggleBtn.textContent = '⚡ 파워슬로우 재생 ▼';
+                // 재생 중이면 정지
+                if (powerSlowState.isPlaying) {
+                    stopPowerSlowPlayback();
+                }
+            }
+        }
+
+        // 파워슬로우 재생 시작
+        function startPowerSlowPlayback() {
+            // 비디오 로드 확인
+            if (!videoPlayer.src || !videoPlayer.duration) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            // 설정 가져오기
+            const speed = parseFloat(document.getElementById('powerSlowSpeed').value);
+            const quality = document.getElementById('powerSlowQuality').value;
+
+            // 품질에 따른 보간 스텝 설정
+            let baseSteps = Math.round(1 / speed);
+            let interpolationSteps = baseSteps;
+            if (quality === 'high') {
+                interpolationSteps = Math.round(baseSteps * 1.5);
+            } else if (quality === 'ultra') {
+                interpolationSteps = Math.round(baseSteps * 2);
+            }
+            interpolationSteps = Math.max(interpolationSteps, 2);
+
+            // 상태 초기화
+            powerSlowState.speed = speed;
+            powerSlowState.quality = quality;
+            powerSlowState.interpolationSteps = interpolationSteps;
+            powerSlowState.currentStep = 0;
+            powerSlowState.currentAlpha = 0;
+            powerSlowState.isPlaying = true;
+            powerSlowState.lastFrameTime = performance.now();
+            powerSlowState.targetFrameTime = videoPlayer.currentTime;
+
+            // Canvas 초기화
+            if (!powerSlowState.frameCaptureCanvas) {
+                powerSlowState.frameCaptureCanvas = document.createElement('canvas');
+                powerSlowState.frameCaptureCanvas.width = videoPlayer.videoWidth;
+                powerSlowState.frameCaptureCanvas.height = videoPlayer.videoHeight;
+                powerSlowState.frameCaptureCtx = powerSlowState.frameCaptureCanvas.getContext('2d');
+            }
+
+            // 비디오 일시정지 (수동으로 프레임 제어)
+            videoPlayer.pause();
+
+            // previewCanvas 활용
+            previewCanvas.style.display = 'block';
+
+            // 첫 프레임 캡처
+            capturePowerSlowFrame();
+
+            // UI 업데이트
+            document.getElementById('powerSlowPlayBtn').style.display = 'none';
+            document.getElementById('powerSlowStopBtn').style.display = 'inline-block';
+
+            console.log(`⚡ 파워슬로우 재생 시작 - 속도: ${speed}x, 품질: ${quality}, 보간 스텝: ${interpolationSteps}`);
+            showStatus(`파워슬로우 재생 시작 (${speed}x 속도, ${quality} 품질)`, 'success');
+
+            // 렌더링 루프 시작
+            powerSlowRenderLoop();
+        }
+
+        // 파워슬로우 재생 정지
+        function stopPowerSlowPlayback() {
+            if (powerSlowState.animationId) {
+                cancelAnimationFrame(powerSlowState.animationId);
+                powerSlowState.animationId = null;
+            }
+
+            powerSlowState.isPlaying = false;
+            powerSlowState.prevFrameData = null;
+            powerSlowState.nextFrameData = null;
+
+            // previewCanvas 숨기기 (일반 텍스트 프리뷰로 복귀)
+            // (텍스트 프리뷰 기능과 충돌하지 않도록)
+
+            // UI 업데이트
+            document.getElementById('powerSlowPlayBtn').style.display = 'inline-block';
+            document.getElementById('powerSlowStopBtn').style.display = 'none';
+
+            console.log('⚡ 파워슬로우 재생 정지');
+            showStatus('파워슬로우 재생 정지', 'info');
+        }
+
+        // 파워슬로우 프레임 캡처
+        function capturePowerSlowFrame() {
+            if (!powerSlowState.isPlaying) return;
+
+            const ctx = powerSlowState.frameCaptureCtx;
+            const canvas = powerSlowState.frameCaptureCanvas;
+
+            // 현재 비디오 프레임 캡처
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.filter = getCurrentFilterString();
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+
+            // 이미지 데이터 저장
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        // 파워슬로우 렌더링 루프
+        function powerSlowRenderLoop(timestamp) {
+            if (!powerSlowState.isPlaying) return;
+
+            const now = performance.now();
+            const elapsed = now - powerSlowState.lastFrameTime;
+
+            // 프레임 간격 계산 (60fps 기준)
+            const frameInterval = 1000 / 60;
+
+            if (elapsed >= frameInterval) {
+                powerSlowState.lastFrameTime = now;
+
+                // 프레임 보간 렌더링
+                renderPowerSlowFrame();
+
+                // 다음 스텝으로
+                powerSlowState.currentStep++;
+
+                if (powerSlowState.currentStep >= powerSlowState.interpolationSteps) {
+                    // 다음 원본 프레임으로 이동
+                    powerSlowState.currentStep = 0;
+
+                    // 비디오 시간 진행 (슬로우 속도 적용)
+                    const frameDuration = 1 / 30; // 30fps 기준
+                    powerSlowState.targetFrameTime += frameDuration;
+
+                    // 비디오 끝 체크
+                    if (powerSlowState.targetFrameTime >= videoPlayer.duration) {
+                        stopPowerSlowPlayback();
+                        return;
+                    }
+
+                    // 다음 프레임으로 seek
+                    videoPlayer.currentTime = powerSlowState.targetFrameTime;
+
+                    // 새 프레임 캡처 대기
+                    const seekHandler = () => {
+                        videoPlayer.removeEventListener('seeked', seekHandler);
+                        // 새 프레임 캡처 준비
+                        powerSlowState.prevFrameData = powerSlowState.nextFrameData;
+                        powerSlowState.nextFrameData = capturePowerSlowFrame();
+                    };
+                    videoPlayer.addEventListener('seeked', seekHandler);
+                }
+            }
+
+            powerSlowState.animationId = requestAnimationFrame(powerSlowRenderLoop);
+        }
+
+        // 파워슬로우 프레임 렌더링 (Alpha Blending)
+        function renderPowerSlowFrame() {
+            if (!powerSlowState.prevFrameData || !powerSlowState.nextFrameData) {
+                // 첫 프레임: 현재 프레임만 표시
+                previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                previewCtx.drawImage(videoPlayer, 0, 0, previewCanvas.width, previewCanvas.height);
+
+                // 초기 프레임 데이터 설정
+                if (!powerSlowState.prevFrameData) {
+                    powerSlowState.prevFrameData = capturePowerSlowFrame();
+                }
+                if (!powerSlowState.nextFrameData) {
+                    powerSlowState.nextFrameData = powerSlowState.prevFrameData;
+                }
+                return;
+            }
+
+            // Alpha 값 계산 (0.0 = prev 프레임, 1.0 = next 프레임)
+            const alpha = powerSlowState.currentStep / powerSlowState.interpolationSteps;
+
+            // previewCanvas에 블렌딩 결과 그리기
+            previewCanvas.width = videoPlayer.videoWidth;
+            previewCanvas.height = videoPlayer.videoHeight;
+
+            // 임시 canvas로 블렌딩
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = previewCanvas.width;
+            tempCanvas.height = previewCanvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // prev 프레임 그리기
+            tempCtx.putImageData(powerSlowState.prevFrameData, 0, 0);
+            tempCtx.globalAlpha = 1 - alpha;
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.drawImage(tempCanvas, 0, 0);
+
+            // next 프레임 그리기
+            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.globalAlpha = 1.0;
+            tempCtx.putImageData(powerSlowState.nextFrameData, 0, 0);
+            previewCtx.globalAlpha = alpha;
+            previewCtx.drawImage(tempCanvas, 0, 0);
+
+            // 복원
+            previewCtx.globalAlpha = 1.0;
+
+            // 디버그 정보 표시 (옵션)
+            if (powerSlowState.currentStep % 10 === 0) {
+                console.log(`⚡ 프레임 보간: ${(alpha * 100).toFixed(0)}% (스텝 ${powerSlowState.currentStep}/${powerSlowState.interpolationSteps})`);
+            }
+        }
 
         // 비디오 일시정지/재생 시에도 미리보기 유지
         videoPlayer.addEventListener('pause', updateTextPreview);
