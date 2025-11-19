@@ -4572,20 +4572,25 @@
             countDiv.textContent = `${videoFiles.length}개 비디오`;
             gridDiv.innerHTML = '';
 
-            // 각 비디오 카드 생성
+            // 로딩 플레이스홀더 SVG
+            const loadingPlaceholder = 'data:image/svg+xml,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="200" height="120">
+                    <rect fill="#f0f0f0" width="200" height="120"/>
+                    <text x="50%" y="50%" text-anchor="middle" fill="#999" font-size="14">🔄 로딩중...</text>
+                </svg>
+            `);
+
+            // 각 비디오 카드 생성 (즉시 표시)
             for (let i = 0; i < videoFiles.length; i++) {
                 const videoInfo = videoFiles[i];
 
-                // 카드 생성
+                // 카드 생성 (로딩 플레이스홀더로 먼저 표시)
                 const card = document.createElement('div');
                 card.className = 'video-card';
                 card.onclick = () => loadVideoFromGallery(i);
 
-                // 썸네일 생성 (비동기)
-                const thumbnailUrl = await generateVideoThumbnail(videoInfo.file);
-
                 card.innerHTML = `
-                    <img class="video-thumbnail" src="${thumbnailUrl}" alt="${videoInfo.name}">
+                    <img class="video-thumbnail" src="${loadingPlaceholder}" alt="${videoInfo.name}" id="thumb-${i}">
                     <div class="video-info">
                         <div class="video-name" title="${videoInfo.name}">${videoInfo.name}</div>
                         <div class="video-duration">${formatFileSize(videoInfo.size)}</div>
@@ -4593,6 +4598,22 @@
                 `;
 
                 gridDiv.appendChild(card);
+            }
+
+            // 썸네일 비동기 로딩
+            for (let i = 0; i < videoFiles.length; i++) {
+                const videoInfo = videoFiles[i];
+
+                // 썸네일 생성 (비동기)
+                generateVideoThumbnail(videoInfo.file, i).then(thumbnailUrl => {
+                    const img = document.getElementById(`thumb-${i}`);
+                    if (img) {
+                        img.src = thumbnailUrl;
+                        console.log(`✅ 썸네일 생성 완료: ${videoInfo.name}`);
+                    }
+                }).catch(error => {
+                    console.error(`❌ 썸네일 생성 실패: ${videoInfo.name}`, error);
+                });
 
                 // 진행률 업데이트
                 showProgress((i + 1) / videoFiles.length * 100);
@@ -4602,46 +4623,87 @@
         }
 
         // 비디오 썸네일 생성
-        async function generateVideoThumbnail(file) {
+        async function generateVideoThumbnail(file, index) {
             return new Promise((resolve, reject) => {
+                console.log(`🔍 썸네일 생성 시작 [${index}]: ${file.name}`);
+
                 const video = document.createElement('video');
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
+
+                // 10초 타임아웃 설정
+                const timeout = setTimeout(() => {
+                    console.warn(`⏱️ 썸네일 생성 타임아웃 [${index}]: ${file.name}`);
+                    URL.revokeObjectURL(video.src);
+                    resolve(getDefaultThumbnail());
+                }, 10000);
 
                 video.preload = 'metadata';
                 video.muted = true;
                 video.playsInline = true;
 
                 video.onloadedmetadata = function() {
+                    console.log(`📊 메타데이터 로드 [${index}]: ${video.duration.toFixed(2)}초, ${video.videoWidth}x${video.videoHeight}`);
                     // 1초 지점으로 이동 (또는 비디오 중간)
                     video.currentTime = Math.min(1, video.duration / 2);
                 };
 
                 video.onseeked = function() {
-                    // 썸네일 크기 설정 (비율 유지)
-                    const aspectRatio = video.videoWidth / video.videoHeight;
-                    canvas.width = 200;
-                    canvas.height = 200 / aspectRatio;
+                    try {
+                        console.log(`🎬 프레임 캡처 시작 [${index}]`);
 
-                    // 비디오 프레임 캡처
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // 썸네일 크기 설정 (비율 유지)
+                        const aspectRatio = video.videoWidth / video.videoHeight;
+                        canvas.width = 200;
+                        canvas.height = 200 / aspectRatio;
 
-                    // Data URL로 변환
-                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        // 비디오 프레임 캡처
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                    // 정리
-                    URL.revokeObjectURL(video.src);
-                    resolve(thumbnailUrl);
+                        // Data URL로 변환
+                        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+                        console.log(`✅ 썸네일 생성 성공 [${index}]: ${thumbnailUrl.substring(0, 50)}...`);
+
+                        // 정리
+                        clearTimeout(timeout);
+                        URL.revokeObjectURL(video.src);
+                        resolve(thumbnailUrl);
+                    } catch (error) {
+                        console.error(`❌ 캔버스 캡처 오류 [${index}]:`, error);
+                        clearTimeout(timeout);
+                        URL.revokeObjectURL(video.src);
+                        resolve(getDefaultThumbnail());
+                    }
                 };
 
-                video.onerror = function() {
-                    // 기본 이미지 반환
-                    resolve('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><rect fill="%23e9ecef" width="200" height="120"/><text x="50%" y="50%" text-anchor="middle" fill="%23999" font-size="16">🎬</text></svg>');
+                video.onerror = function(e) {
+                    console.error(`❌ 비디오 로드 오류 [${index}]:`, e);
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(video.src);
+                    resolve(getDefaultThumbnail());
                 };
 
                 // 비디오 로드
-                video.src = URL.createObjectURL(file);
+                try {
+                    video.src = URL.createObjectURL(file);
+                    console.log(`📁 파일 로드 [${index}]: ${file.name} (${formatFileSize(file.size)})`);
+                } catch (error) {
+                    console.error(`❌ ObjectURL 생성 오류 [${index}]:`, error);
+                    clearTimeout(timeout);
+                    reject(error);
+                }
             });
+        }
+
+        // 기본 썸네일 이미지
+        function getDefaultThumbnail() {
+            return 'data:image/svg+xml,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="200" height="120">
+                    <rect fill="#e9ecef" width="200" height="120"/>
+                    <text x="50%" y="50%" text-anchor="middle" fill="#999" font-size="16">🎬</text>
+                </svg>
+            `);
         }
 
         // 갤러리에서 비디오 로드
