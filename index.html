@@ -2540,8 +2540,8 @@
                 let currentStep = 0;
                 let processedFrames = 0;
 
-                // 프레임 캡처 간격 (ms)
-                const outputFrameInterval = 1000 / targetFps;
+                // 프레임 캡처 간격: 원본 fps 기준 (재생 시간 유지)
+                const outputFrameInterval = 1000 / originalFps;
 
                 // 프레임 보간을 위한 임시 캔버스
                 const prevFrameCanvas = document.createElement('canvas');
@@ -2636,9 +2636,18 @@
                     }
 
                     if (currentFrameIndex < frameTimes.length) {
-                        setTimeout(() => {
-                            captureFrame();
-                        }, outputFrameInterval);
+                        // 원본 프레임 간격으로 보간 프레임 그룹 생성
+                        if (currentStep === 0) {
+                            // 새 원본 프레임 시작: 원본 fps 간격으로 대기
+                            setTimeout(() => {
+                                captureFrame();
+                            }, outputFrameInterval);
+                        } else {
+                            // 보간 프레임: 즉시 생성
+                            setTimeout(() => {
+                                captureFrame();
+                            }, 0);
+                        }
                     } else {
                         console.log('✅ 고화질 비디오 처리 완료!');
                         mediaRecorder.stop();
