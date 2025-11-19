@@ -410,6 +410,102 @@
                 transform: translate(-50%, -50%) scale(0.8);
             }
         }
+
+        /* 비디오 갤러리 스타일 */
+        .video-gallery {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #ddd;
+        }
+
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .gallery-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .gallery-count {
+            font-size: 0.9em;
+            color: #666;
+            background: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .video-card {
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .video-card.selected {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: #e9ecef;
+        }
+
+        .video-info {
+            padding: 10px;
+        }
+
+        .video-name {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-duration {
+            font-size: 0.75em;
+            color: #666;
+        }
+
+        .gallery-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .gallery-empty-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -433,6 +529,27 @@
                     <label for="urlInput">또는 비디오 URL 입력</label>
                     <input type="text" id="urlInput" placeholder="https://example.com/video.mp4">
                     <button class="btn" onclick="loadVideoFromURL()" style="margin-top: 10px;">URL에서 불러오기</button>
+                </div>
+
+                <div class="input-group" style="margin-top: 15px;">
+                    <button class="btn" onclick="openVideoFolder()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); width: 100%;">
+                        📂 비디오 폴더 열기
+                    </button>
+                    <small style="color: #666; margin-top: 5px; display: block;">폴더 내 모든 비디오를 갤러리로 표시합니다</small>
+                </div>
+
+                <!-- 비디오 갤러리 -->
+                <div class="video-gallery" id="videoGallery" style="display: none;">
+                    <div class="gallery-header">
+                        <div class="gallery-title">📹 비디오 갤러리</div>
+                        <div class="gallery-count" id="galleryCount">0개 비디오</div>
+                    </div>
+                    <div class="video-grid" id="videoGrid">
+                        <div class="gallery-empty">
+                            <div class="gallery-empty-icon">🎬</div>
+                            <div>비디오 폴더를 선택하세요</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1050,6 +1167,11 @@
         // FFmpeg 인스턴스
         let ffmpeg = null;
         let ffmpegLoaded = false;
+
+        // 비디오 갤러리
+        let videoFolderHandle = null; // 선택된 비디오 폴더 핸들
+        let videoFiles = []; // 폴더 내 비디오 파일 목록
+        let selectedVideoIndex = -1; // 현재 선택된 비디오 인덱스
 
         // 필터 상태
         let filterState = {
@@ -4373,6 +4495,188 @@
             }
             allowPlay = true;
         });
+
+        // ============================================
+        // 비디오 갤러리 기능
+        // ============================================
+
+        // 비디오 폴더 열기
+        async function openVideoFolder() {
+            try {
+                // File System Access API로 폴더 선택
+                videoFolderHandle = await window.showDirectoryPicker({
+                    mode: 'read'
+                });
+
+                showStatus('폴더 스캔 중...', 'info');
+                showProgress(0);
+
+                // 폴더 내 비디오 파일 스캔
+                await scanVideoFiles();
+
+                hideProgress();
+                showStatus(`${videoFiles.length}개의 비디오를 찾았습니다!`, 'success');
+
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('폴더 열기 오류:', error);
+                    showStatus('폴더를 열 수 없습니다.', 'error');
+                }
+                hideProgress();
+            }
+        }
+
+        // 폴더 내 비디오 파일 스캔
+        async function scanVideoFiles() {
+            videoFiles = [];
+            const videoExtensions = ['.mp4', '.webm', '.avi', '.mov', '.mkv', '.m4v', '.flv'];
+
+            for await (const entry of videoFolderHandle.values()) {
+                if (entry.kind === 'file') {
+                    const fileName = entry.name.toLowerCase();
+                    const hasVideoExtension = videoExtensions.some(ext => fileName.endsWith(ext));
+
+                    if (hasVideoExtension) {
+                        const file = await entry.getFile();
+                        videoFiles.push({
+                            fileHandle: entry,
+                            file: file,
+                            name: entry.name,
+                            size: file.size,
+                            thumbnail: null
+                        });
+                    }
+                }
+            }
+
+            // 이름순 정렬
+            videoFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+            // 갤러리 표시
+            await displayVideoGallery();
+        }
+
+        // 비디오 갤러리 표시
+        async function displayVideoGallery() {
+            const galleryDiv = document.getElementById('videoGallery');
+            const gridDiv = document.getElementById('videoGrid');
+            const countDiv = document.getElementById('galleryCount');
+
+            if (videoFiles.length === 0) {
+                galleryDiv.style.display = 'none';
+                return;
+            }
+
+            // 갤러리 표시
+            galleryDiv.style.display = 'block';
+            countDiv.textContent = `${videoFiles.length}개 비디오`;
+            gridDiv.innerHTML = '';
+
+            // 각 비디오 카드 생성
+            for (let i = 0; i < videoFiles.length; i++) {
+                const videoInfo = videoFiles[i];
+
+                // 카드 생성
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.onclick = () => loadVideoFromGallery(i);
+
+                // 썸네일 생성 (비동기)
+                const thumbnailUrl = await generateVideoThumbnail(videoInfo.file);
+
+                card.innerHTML = `
+                    <img class="video-thumbnail" src="${thumbnailUrl}" alt="${videoInfo.name}">
+                    <div class="video-info">
+                        <div class="video-name" title="${videoInfo.name}">${videoInfo.name}</div>
+                        <div class="video-duration">${formatFileSize(videoInfo.size)}</div>
+                    </div>
+                `;
+
+                gridDiv.appendChild(card);
+
+                // 진행률 업데이트
+                showProgress((i + 1) / videoFiles.length * 100);
+            }
+
+            hideProgress();
+        }
+
+        // 비디오 썸네일 생성
+        async function generateVideoThumbnail(file) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
+
+                video.onloadedmetadata = function() {
+                    // 1초 지점으로 이동 (또는 비디오 중간)
+                    video.currentTime = Math.min(1, video.duration / 2);
+                };
+
+                video.onseeked = function() {
+                    // 썸네일 크기 설정 (비율 유지)
+                    const aspectRatio = video.videoWidth / video.videoHeight;
+                    canvas.width = 200;
+                    canvas.height = 200 / aspectRatio;
+
+                    // 비디오 프레임 캡처
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    // Data URL로 변환
+                    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+                    // 정리
+                    URL.revokeObjectURL(video.src);
+                    resolve(thumbnailUrl);
+                };
+
+                video.onerror = function() {
+                    // 기본 이미지 반환
+                    resolve('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120"><rect fill="%23e9ecef" width="200" height="120"/><text x="50%" y="50%" text-anchor="middle" fill="%23999" font-size="16">🎬</text></svg>');
+                };
+
+                // 비디오 로드
+                video.src = URL.createObjectURL(file);
+            });
+        }
+
+        // 갤러리에서 비디오 로드
+        async function loadVideoFromGallery(index) {
+            if (index < 0 || index >= videoFiles.length) return;
+
+            selectedVideoIndex = index;
+            const videoInfo = videoFiles[index];
+
+            // 선택 상태 업데이트
+            const cards = document.querySelectorAll('.video-card');
+            cards.forEach((card, i) => {
+                if (i === index) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            // 비디오 로드
+            currentVideoFile = videoInfo.file;
+            const url = URL.createObjectURL(videoInfo.file);
+            videoPlayer.src = url;
+            videoPlayer.load();
+
+            showStatus(`${videoInfo.name} 로드 완료!`, 'success');
+        }
+
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
     </script>
 </body>
 </html>
