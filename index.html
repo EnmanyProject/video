@@ -4999,7 +4999,7 @@
             });
         });
 
-        // 오디오 합성 시작
+        // 오디오 합성 시작 - Web Audio API 사용 (FFmpeg 없이)
         async function startAudioMix() {
             if (!currentVideoFile) {
                 showStatus('비디오를 먼저 로드해주세요.', 'error');
@@ -5011,118 +5011,149 @@
                 return;
             }
 
-            // FFmpeg 로드
-            if (!ffmpegLoaded) {
-                showStatus('FFmpeg 로딩 중...', 'info');
-                showProgress(10);
-                await loadFFmpeg();
-            }
+            showStatus('오디오 합성 준비 중...', 'info');
+            showProgress(10);
 
             const originalOption = document.getElementById('originalAudioOption').value;
             const newVolume = parseFloat(document.getElementById('newAudioVolume').value) / 100;
             const originalVolume = parseFloat(document.getElementById('originalAudioVolume').value) / 100;
-            const audioStartTime = parseFloat(document.getElementById('audioStartTime').value);
-            const audioLoop = document.getElementById('audioLoop').checked;
-
-            showStatus('오디오 합성 준비 중...', 'info');
-            showProgress(20);
 
             try {
-                // 파일 이름 생성
-                const videoName = 'input_video.mp4';
-                const audioName = 'input_audio' + currentAudioFile.name.substring(currentAudioFile.name.lastIndexOf('.'));
-                const outputName = 'output_mixed.mp4';
+                // 비디오 요소 생성
+                const tempVideo = document.createElement('video');
+                tempVideo.src = URL.createObjectURL(currentVideoFile);
+                tempVideo.muted = true;
 
-                // FFmpeg 파일 시스템에 파일 쓰기 - 0.11.6 API
-                console.log('📁 비디오 파일 쓰기...');
-                ffmpeg.FS('writeFile', videoName, await fetchFile(currentVideoFile));
+                await new Promise((resolve) => {
+                    tempVideo.onloadedmetadata = resolve;
+                });
+
+                showProgress(20);
+
+                // Canvas와 MediaRecorder 설정
+                const recordCanvas = document.createElement('canvas');
+                recordCanvas.width = tempVideo.videoWidth;
+                recordCanvas.height = tempVideo.videoHeight;
+                const recordCtx = recordCanvas.getContext('2d');
+
+                showStatus('오디오 처리 중...', 'info');
                 showProgress(30);
 
-                console.log('📁 오디오 파일 쓰기...');
-                ffmpeg.FS('writeFile', audioName, await fetchFile(currentAudioFile));
+                // AudioContext 생성
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // 오디오 파일을 ArrayBuffer로 읽기
+                const audioArrayBuffer = await currentAudioFile.arrayBuffer();
+                const newAudioBuffer = await audioContext.decodeAudioData(audioArrayBuffer);
+
                 showProgress(40);
 
-                // FFmpeg 명령어 생성
-                let ffmpegArgs = ['-i', videoName, '-i', audioName];
+                // 비디오의 오디오 소스 생성
+                const videoSource = audioContext.createMediaElementSource(tempVideo);
+                const newAudioSource = audioContext.createBufferSource();
+                newAudioSource.buffer = newAudioBuffer;
+                newAudioSource.loop = false;
 
-                // 오디오 처리 옵션에 따라 필터 설정
+                // 볼륨 조절용 GainNode
+                const videoGain = audioContext.createGain();
+                const newAudioGain = audioContext.createGain();
+                const destination = audioContext.createMediaStreamDestination();
+
+                // 믹싱 모드에 따라 설정
                 if (originalOption === 'replace') {
-                    // 교체: 새 오디오만 사용
-                    ffmpegArgs.push(
-                        '-map', '0:v',  // 비디오 스트림
-                        '-map', '1:a',  // 새 오디오 스트림
-                        '-filter:a', `volume=${newVolume}`
-                    );
+                    // 교체: 새 오디오만
+                    newAudioGain.gain.value = newVolume;
+                    newAudioSource.connect(newAudioGain).connect(destination);
                 } else if (originalOption === 'mix') {
-                    // 믹싱: 두 오디오 혼합
-                    ffmpegArgs.push(
-                        '-filter_complex',
-                        `[0:a]volume=${originalVolume}[a1];[1:a]volume=${newVolume}[a2];[a1][a2]amix=inputs=2:duration=first[aout]`,
-                        '-map', '0:v',
-                        '-map', '[aout]'
-                    );
+                    // 믹싱: 둘 다 혼합
+                    videoGain.gain.value = originalVolume;
+                    newAudioGain.gain.value = newVolume;
+                    videoSource.connect(videoGain).connect(destination);
+                    newAudioSource.connect(newAudioGain).connect(destination);
                 } else if (originalOption === 'keep') {
-                    // 유지: 원본을 주로, 새 오디오를 배경으로
-                    const bgVolume = newVolume * 0.3;  // 배경음은 30% 볼륨
-                    ffmpegArgs.push(
-                        '-filter_complex',
-                        `[0:a]volume=${originalVolume}[a1];[1:a]volume=${bgVolume}[a2];[a1][a2]amix=inputs=2:duration=first[aout]`,
-                        '-map', '0:v',
-                        '-map', '[aout]'
-                    );
+                    // 유지: 원본 주, 새 오디오 배경
+                    videoGain.gain.value = originalVolume;
+                    newAudioGain.gain.value = newVolume * 0.3;
+                    videoSource.connect(videoGain).connect(destination);
+                    newAudioSource.connect(newAudioGain).connect(destination);
                 }
 
-                // 오디오 반복 옵션
-                if (audioLoop) {
-                    ffmpegArgs.splice(3, 0, '-stream_loop', '-1');  // 오디오 무한 반복
-                }
-
-                // 오디오 시작 시간
-                if (audioStartTime > 0) {
-                    ffmpegArgs.splice(2, 0, '-ss', audioStartTime.toString());
-                }
-
-                // 출력 설정
-                ffmpegArgs.push(
-                    '-c:v', 'copy',  // 비디오 코덱 복사 (빠름)
-                    '-c:a', 'aac',   // 오디오 AAC 인코딩
-                    '-b:a', '192k',  // 오디오 비트레이트
-                    '-shortest',     // 짧은 쪽에 맞춤
-                    outputName
-                );
-
-                console.log('🎬 FFmpeg 명령:', ffmpegArgs.join(' '));
-                showStatus('오디오 합성 중... (시간이 걸릴 수 있습니다)', 'warning');
                 showProgress(50);
 
-                // FFmpeg 실행 - 0.11.6 API (배열을 풀어서 전달)
-                await ffmpeg.run(...ffmpegArgs);
+                // Canvas 스트림과 오디오 스트림 결합
+                const canvasStream = recordCanvas.captureStream(30); // 30fps
+                const audioStream = destination.stream;
 
-                showProgress(90);
+                const combinedStream = new MediaStream([
+                    ...canvasStream.getVideoTracks(),
+                    ...audioStream.getAudioTracks()
+                ]);
 
-                // 결과 파일 읽기 - 0.11.6 API
-                const data = ffmpeg.FS('readFile', outputName);
-                const blob = new Blob([data.buffer], { type: 'video/mp4' });
+                // MediaRecorder 설정
+                const recorder = new MediaRecorder(combinedStream, {
+                    mimeType: 'video/webm;codecs=vp8,opus',
+                    videoBitsPerSecond: 2500000
+                });
 
-                showProgress(100);
-                showStatus('오디오 합성 완료!', 'success');
+                const chunks = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
 
-                // 다운로드
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-                a.download = `audio_mixed_${timestamp}.mp4`;
-                a.click();
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
 
-                // 정리 - 0.11.6 API
-                ffmpeg.FS('unlink', videoName);
-                ffmpeg.FS('unlink', audioName);
-                ffmpeg.FS('unlink', outputName);
+                    showProgress(100);
+                    showStatus('오디오 합성 완료!', 'success');
 
-                hideProgress();
+                    // 다운로드
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    a.download = `audio_mixed_${timestamp}.webm`;
+                    a.click();
 
-                console.log('✅ 오디오 합성 완료');
+                    // 정리
+                    URL.revokeObjectURL(tempVideo.src);
+                    URL.revokeObjectURL(url);
+                    audioContext.close();
+                    hideProgress();
+
+                    console.log('✅ 오디오 합성 완료');
+                };
+
+                showStatus('녹화 중... (비디오 길이만큼 시간이 걸립니다)', 'warning');
+                showProgress(60);
+
+                // Canvas에 비디오 프레임 그리기
+                let animationId;
+                function drawFrame() {
+                    recordCtx.drawImage(tempVideo, 0, 0, recordCanvas.width, recordCanvas.height);
+                    animationId = requestAnimationFrame(drawFrame);
+                }
+
+                // 진행률 업데이트
+                const progressInterval = setInterval(() => {
+                    if (tempVideo.duration > 0) {
+                        const progress = 60 + (tempVideo.currentTime / tempVideo.duration) * 30;
+                        showProgress(Math.min(90, progress));
+                    }
+                }, 500);
+
+                // 비디오 종료 처리
+                tempVideo.onended = () => {
+                    cancelAnimationFrame(animationId);
+                    clearInterval(progressInterval);
+                    recorder.stop();
+                    if (newAudioSource.context.state !== 'closed') {
+                        newAudioSource.stop();
+                    }
+                };
+
+                // 녹화 시작
+                recorder.start();
+                newAudioSource.start(0);
+                tempVideo.play();
+                drawFrame();
 
             } catch (error) {
                 console.error('❌ 오디오 합성 오류:', error);
