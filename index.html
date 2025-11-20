@@ -1245,6 +1245,7 @@
         // FFmpeg 인스턴스
         let ffmpeg = null;
         let ffmpegLoaded = false;
+        let fetchFile = null;  // FFmpeg 유틸리티 함수
 
         // 비디오 갤러리
         let videoFolderHandle = null; // 선택된 비디오 폴더 핸들
@@ -1381,8 +1382,10 @@
                 showStatus('FFmpeg 라이브러리 로딩 중...', 'info');
 
                 const { FFmpeg } = FFmpegWASM;
-                const { fetchFile } = FFmpegUtil;
+                const { fetchFile: fetchFileUtil } = FFmpegUtil;
 
+                // 전역 변수에 할당
+                fetchFile = fetchFileUtil;
                 ffmpeg = new FFmpeg();
 
                 await ffmpeg.load({
