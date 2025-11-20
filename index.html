@@ -4753,6 +4753,48 @@
             if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
             return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
         }
+
+        // 화살표 키로 구간 이동 (10초)
+        document.addEventListener('keydown', function(e) {
+            // 입력 필드에 포커스가 있으면 무시
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // 비디오가 로드되지 않았으면 무시
+            if (!videoPlayer.duration) {
+                return;
+            }
+
+            let seekTime = null;
+
+            if (e.key === 'ArrowLeft') {
+                // 왼쪽 화살표: 10초 뒤로
+                e.preventDefault();
+                seekTime = Math.max(0, videoPlayer.currentTime - 10);
+                console.log(`⬅️ 10초 뒤로: ${videoPlayer.currentTime.toFixed(1)}초 → ${seekTime.toFixed(1)}초`);
+            } else if (e.key === 'ArrowRight') {
+                // 오른쪽 화살표: 10초 앞으로
+                e.preventDefault();
+                seekTime = Math.min(videoPlayer.duration, videoPlayer.currentTime + 10);
+                console.log(`➡️ 10초 앞으로: ${videoPlayer.currentTime.toFixed(1)}초 → ${seekTime.toFixed(1)}초`);
+            }
+
+            if (seekTime !== null) {
+                videoPlayer.currentTime = seekTime;
+            }
+        });
+
+        // 전체화면 변경 이벤트 감지
+        document.addEventListener('fullscreenchange', function() {
+            if (document.fullscreenElement) {
+                console.log('🖥️ 전체화면 모드 진입 - 화살표 키 활성화');
+            } else {
+                console.log('🖥️ 전체화면 모드 종료');
+            }
+        });
+
+        console.log('⌨️ 화살표 키 네비게이션 활성화 (←: 10초 뒤로, →: 10초 앞으로)');
     </script>
 </body>
 </html>
