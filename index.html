@@ -1380,7 +1380,8 @@
             try {
                 showStatus('FFmpeg 라이브러리 로딩 중...', 'info');
 
-                const { createFFmpeg, fetchFile: fetchFileFunc } = FFmpegWASM;
+                // FFmpeg 0.11.6의 전역 객체는 'FFmpeg'
+                const { createFFmpeg, fetchFile: fetchFileFunc } = FFmpeg;
 
                 // 전역 변수에 할당
                 fetchFile = fetchFileFunc;
