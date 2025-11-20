@@ -1224,9 +1224,6 @@
     <!-- GIF.js 라이브러리 -->
     <script src="gif.js"></script>
 
-    <!-- FFmpeg.wasm 0.11.6 (GitHub Pages 호환) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
-
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
         const canvas = document.getElementById('canvas');
@@ -1241,10 +1238,6 @@
         let allowPlay = true; // 재생 허용 플래그
         let previewAnimationId = null; // 프리뷰 애니메이션 ID
 
-        // FFmpeg 인스턴스
-        let ffmpeg = null;
-        let ffmpegLoaded = false;
-        let fetchFile = null;  // FFmpeg 유틸리티 함수
 
         // 비디오 갤러리
         let videoFolderHandle = null; // 선택된 비디오 폴더 핸들
@@ -1369,81 +1362,6 @@
             }
         }
 
-        // ===============================
-        // FFmpeg.wasm 초기화 및 변환
-        // ===============================
-
-        // FFmpeg 초기화 (lazy loading) - 0.11.6 API
-        async function loadFFmpeg() {
-            if (ffmpegLoaded) return true;
-
-            try {
-                showStatus('FFmpeg 라이브러리 로딩 중...', 'info');
-
-                // FFmpeg 0.11.6의 전역 객체는 'FFmpeg'
-                const { createFFmpeg, fetchFile: fetchFileFunc } = FFmpeg;
-
-                // 전역 변수에 할당
-                fetchFile = fetchFileFunc;
-                ffmpeg = createFFmpeg({
-                    log: false,
-                    corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
-                });
-
-                await ffmpeg.load();
-
-                ffmpegLoaded = true;
-                showStatus('FFmpeg 로딩 완료!', 'success');
-                return true;
-            } catch (error) {
-                console.error('FFmpeg 로딩 오류:', error);
-                showStatus('FFmpeg 로딩 실패. WebM 포맷만 사용됩니다.', 'warning');
-                return false;
-            }
-        }
-
-        // WebM을 MP4로 변환 - 0.11.6 API
-        async function convertWebMToMP4(webmBlob, filename) {
-            try {
-                showStatus('MP4로 변환 중... 잠시만 기다려주세요.', 'info');
-                showProgress(50);
-
-                // FFmpeg 파일 시스템에 WebM 쓰기
-                const inputName = 'input.webm';
-                const outputName = 'output.mp4';
-
-                ffmpeg.FS('writeFile', inputName, await fetchFile(webmBlob));
-
-                // WebM → MP4 변환
-                await ffmpeg.run(
-                    '-i', inputName,
-                    '-c:v', 'libx264',      // H.264 비디오 코덱
-                    '-preset', 'medium',     // 인코딩 속도/품질 균형
-                    '-crf', '23',            // 품질 (낮을수록 고품질, 18-28 권장)
-                    '-c:a', 'aac',           // AAC 오디오 코덱
-                    '-b:a', '128k',          // 오디오 비트레이트
-                    '-movflags', '+faststart', // 스트리밍 최적화
-                    outputName
-                );
-
-                // MP4 파일 읽기
-                const data = ffmpeg.FS('readFile', outputName);
-                const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
-
-                // 임시 파일 정리
-                ffmpeg.FS('unlink', inputName);
-                ffmpeg.FS('unlink', outputName);
-
-                showProgress(100);
-                showStatus('MP4 변환 완료!', 'success');
-
-                return mp4Blob;
-            } catch (error) {
-                console.error('MP4 변환 오류:', error);
-                showStatus('MP4 변환 실패. WebM 파일을 저장합니다.', 'warning');
-                return null;
-            }
-        }
 
         // 파일을 선택된 폴더 또는 다운로드로 저장
         async function saveFile(blob, filename) {
@@ -2676,34 +2594,10 @@
 
                 mediaRecorder.onstop = async () => {
                     const webmBlob = new Blob(chunks, { type: 'video/webm' });
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // 포맷 선택 확인
-                    const selectedFormat = document.getElementById('highQualityFormat').value;
-
-                    if (selectedFormat === 'mp4') {
-                        // MP4 변환
-                        const loaded = await loadFFmpeg();
-                        if (loaded) {
-                            const mp4Blob = await convertWebMToMP4(webmBlob, `highquality_${targetFps}fps_${quality}_${timestamp}`);
-                            if (mp4Blob) {
-                                const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.mp4`;
-                                await saveFile(mp4Blob, filename);
-                                hideProgress();
-                                showStatus('고화질 비디오가 MP4로 완료되었습니다!', 'success');
-                            } else {
-                                // 변환 실패 시 WebM 저장
-                                const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
-                                await saveFile(webmBlob, filename);
-                                hideProgress();
-                            }
-                        } else {
-                            // FFmpeg 로딩 실패 시 WebM 저장
-                            const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
-                            await saveFile(webmBlob, filename);
-                            hideProgress();
-                        }
-                    } else {
+                    // WebM으로만 저장 (GitHub Pages는 MP4 변환 불가)
+                    {
                         // WebM 저장
                         const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
                         await saveFile(webmBlob, filename);
@@ -3543,40 +3437,13 @@
 
                 mediaRecorder.onstop = async () => {
                     const webmBlob = new Blob(chunks, { type: 'video/webm' });
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // 포맷 선택 확인
-                    const selectedFormat = document.getElementById('slowMotionFormat').value;
-
-                    if (selectedFormat === 'mp4') {
-                        // MP4 변환
-                        const loaded = await loadFFmpeg();
-                        if (loaded) {
-                            const mp4Blob = await convertWebMToMP4(webmBlob, `slowmotion_${slowSpeed}x_${timestamp}`);
-                            if (mp4Blob) {
-                                const filename = `slowmotion_${slowSpeed}x_${timestamp}.mp4`;
-                                await saveFile(mp4Blob, filename);
-                                hideProgress();
-                                showStatus('슬로우 모션 비디오가 MP4로 완료되었습니다!', 'success');
-                            } else {
-                                // 변환 실패 시 WebM 저장
-                                const filename = `slowmotion_${slowSpeed}x_${timestamp}.webm`;
-                                await saveFile(webmBlob, filename);
-                                hideProgress();
-                            }
-                        } else {
-                            // FFmpeg 로딩 실패 시 WebM 저장
-                            const filename = `slowmotion_${slowSpeed}x_${timestamp}.webm`;
-                            await saveFile(webmBlob, filename);
-                            hideProgress();
-                        }
-                    } else {
-                        // WebM 저장
-                        const filename = `slowmotion_${slowSpeed}x_${timestamp}.webm`;
-                        await saveFile(webmBlob, filename);
-                        hideProgress();
-                        showStatus('슬로우 모션 비디오가 완료되었습니다!', 'success');
-                    }
+                    // WebM으로만 저장 (GitHub Pages는 MP4 변환 불가)
+                    const filename = `slowmotion_${slowSpeed}x_${timestamp}.webm`;
+                    await saveFile(webmBlob, filename);
+                    hideProgress();
+                    showStatus('슬로우 모션 비디오가 완료되었습니다!', 'success')
                 };
 
                 // 프레임 보간(Frame Interpolation) 방식으로 슬로우 모션 생성
@@ -3934,40 +3801,13 @@
 
                 mediaRecorder.onstop = async () => {
                     const webmBlob = new Blob(chunks, { type: 'video/webm' });
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // 포맷 선택 확인
-                    const selectedFormat = document.getElementById('reverseFormat').value;
-
-                    if (selectedFormat === 'mp4') {
-                        // MP4 변환
-                        const loaded = await loadFFmpeg();
-                        if (loaded) {
-                            const mp4Blob = await convertWebMToMP4(webmBlob, `reversed_${timestamp}`);
-                            if (mp4Blob) {
-                                const filename = `reversed_${timestamp}.mp4`;
-                                await saveFile(mp4Blob, filename);
-                                hideProgress();
-                                showStatus('역재생 비디오가 MP4로 완료되었습니다!', 'success');
-                            } else {
-                                // 변환 실패 시 WebM 저장
-                                const filename = `reversed_${timestamp}.webm`;
-                                await saveFile(webmBlob, filename);
-                                hideProgress();
-                            }
-                        } else {
-                            // FFmpeg 로딩 실패 시 WebM 저장
-                            const filename = `reversed_${timestamp}.webm`;
-                            await saveFile(webmBlob, filename);
-                            hideProgress();
-                        }
-                    } else {
-                        // WebM 저장
-                        const filename = `reversed_${timestamp}.webm`;
-                        await saveFile(webmBlob, filename);
-                        hideProgress();
-                        showStatus('역재생 비디오가 완료되었습니다!', 'success');
-                    }
+                    // WebM으로만 저장 (GitHub Pages는 MP4 변환 불가)
+                    const filename = `reversed_${timestamp}.webm`;
+                    await saveFile(webmBlob, filename);
+                    hideProgress();
+                    showStatus('역재생 비디오가 완료되었습니다!', 'success');
                 };
 
                 // 역재생 프레임 캡처
