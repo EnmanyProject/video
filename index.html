@@ -1224,9 +1224,9 @@
     <!-- GIF.js 라이브러리 -->
     <script src="gif.js"></script>
 
-    <!-- FFmpeg.wasm 라이브러리 (WebM → MP4 변환) -->
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <!-- FFmpeg.wasm 라이브러리 (WebM → MP4 변환) - jsdelivr CDN 사용 -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
@@ -1388,10 +1388,9 @@
                 fetchFile = fetchFileUtil;
                 ffmpeg = new FFmpeg();
 
+                // GitHub Pages용 싱글스레드 버전 사용 (CORS/SharedArrayBuffer 문제 해결)
                 await ffmpeg.load({
-                    coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-                    wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
-                    workerURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.worker.js'
+                    coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.js'
                 });
 
                 ffmpegLoaded = true;
