@@ -1224,6 +1224,10 @@
     <!-- GIF.js 라이브러리 -->
     <script src="gif.js"></script>
 
+    <!-- FFmpeg.wasm 라이브러리 (WebM → MP4 변환, localhost 전용) -->
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
         const canvas = document.getElementById('canvas');
@@ -1238,6 +1242,9 @@
         let allowPlay = true; // 재생 허용 플래그
         let previewAnimationId = null; // 프리뷰 애니메이션 ID
 
+        // FFmpeg 인스턴스 (localhost 전용 - COOP/COEP 헤더 필요)
+        let ffmpeg = null;
+        let ffmpegLoaded = false;
 
         // 비디오 갤러리
         let videoFolderHandle = null; // 선택된 비디오 폴더 핸들
@@ -1362,6 +1369,81 @@
             }
         }
 
+        // ===============================
+        // FFmpeg.wasm 초기화 및 변환
+        // ===============================
+
+        // FFmpeg 초기화 (lazy loading)
+        async function loadFFmpeg() {
+            if (ffmpegLoaded) return true;
+
+            try {
+                showStatus('FFmpeg 라이브러리 로딩 중...', 'info');
+
+                const { FFmpeg } = FFmpegWASM;
+                const { fetchFile } = FFmpegUtil;
+
+                ffmpeg = new FFmpeg();
+
+                await ffmpeg.load({
+                    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
+                    wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.wasm'
+                });
+
+                ffmpegLoaded = true;
+                showStatus('FFmpeg 로딩 완료!', 'success');
+                return true;
+            } catch (error) {
+                console.error('FFmpeg 로딩 오류:', error);
+                showStatus('FFmpeg 로딩 실패. WebM 포맷만 사용됩니다.', 'warning');
+                return false;
+            }
+        }
+
+        // WebM을 MP4로 변환
+        async function convertWebMToMP4(webmBlob, filename) {
+            try {
+                showStatus('MP4로 변환 중... 잠시만 기다려주세요.', 'info');
+                showProgress(50);
+
+                const { fetchFile } = FFmpegUtil;
+
+                // FFmpeg 파일 시스템에 WebM 쓰기
+                const inputName = 'input.webm';
+                const outputName = 'output.mp4';
+
+                await ffmpeg.writeFile(inputName, await fetchFile(webmBlob));
+
+                // WebM → MP4 변환
+                await ffmpeg.exec([
+                    '-i', inputName,
+                    '-c:v', 'libx264',      // H.264 비디오 코덱
+                    '-preset', 'medium',     // 인코딩 속도/품질 균형
+                    '-crf', '23',            // 품질 (낮을수록 고품질, 18-28 권장)
+                    '-c:a', 'aac',           // AAC 오디오 코덱
+                    '-b:a', '128k',          // 오디오 비트레이트
+                    '-movflags', '+faststart', // 스트리밍 최적화
+                    outputName
+                ]);
+
+                // MP4 파일 읽기
+                const data = await ffmpeg.readFile(outputName);
+                const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
+
+                // 임시 파일 정리
+                await ffmpeg.deleteFile(inputName);
+                await ffmpeg.deleteFile(outputName);
+
+                showProgress(100);
+                showStatus('MP4 변환 완료!', 'success');
+
+                return mp4Blob;
+            } catch (error) {
+                console.error('MP4 변환 오류:', error);
+                showStatus('MP4 변환 실패. WebM 파일을 저장합니다.', 'warning');
+                return null;
+            }
+        }
 
         // 파일을 선택된 폴더 또는 다운로드로 저장
         async function saveFile(blob, filename) {
@@ -2621,14 +2703,46 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const videoBlob = new Blob(chunks, { type: mimeType });
+                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // 선택된 포맷으로 저장
-                    const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.${fileExtension}`;
-                    await saveFile(videoBlob, filename);
-                    hideProgress();
-                    showStatus(`고화질 비디오가 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
+                    // MP4 선택 시 FFmpeg 변환 시도 (localhost 전용)
+                    if (selectedFormat === 'mp4') {
+                        const ffmpegReady = await loadFFmpeg();
+                        if (ffmpegReady) {
+                            // FFmpeg로 WebM → MP4 변환
+                            const mp4Blob = await convertWebMToMP4(webmBlob, `highquality_${targetFps}fps_${quality}_${timestamp}`);
+                            if (mp4Blob) {
+                                const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.mp4`;
+                                await saveFile(mp4Blob, filename);
+                                hideProgress();
+                                showStatus('고화질 비디오가 MP4로 완료되었습니다!', 'success');
+                                return;
+                            }
+                        }
+
+                        // FFmpeg 실패 시 네이티브 MP4 시도
+                        if (fileExtension === 'mp4') {
+                            const nativeBlob = new Blob(chunks, { type: mimeType });
+                            const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.mp4`;
+                            await saveFile(nativeBlob, filename);
+                            hideProgress();
+                            showStatus('고화질 비디오가 완료되었습니다! (네이티브 MP4)', 'success');
+                            return;
+                        }
+
+                        // 네이티브 MP4도 안 되면 WebM 저장
+                        const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('고화질 비디오가 완료되었습니다! (WebM)', 'warning');
+                    } else {
+                        // WebM 저장
+                        const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('고화질 비디오가 완료되었습니다!', 'success');
+                    }
                 };
 
                 // 프레임 보간 설정
@@ -2972,13 +3086,46 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const videoBlob = new Blob(chunks, { type: mimeType });
+                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const filename = `slowmotion_${timestamp}.${fileExtension}`;
 
-                    await saveFile(videoBlob, filename);
-                    hideProgress();
-                    showStatus(`슬로우 모션이 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
+                    // MP4 선택 시 FFmpeg 변환 시도 (localhost 전용)
+                    if (selectedFormat === 'mp4') {
+                        const ffmpegReady = await loadFFmpeg();
+                        if (ffmpegReady) {
+                            // FFmpeg로 WebM → MP4 변환
+                            const mp4Blob = await convertWebMToMP4(webmBlob, `slowmotion_${timestamp}`);
+                            if (mp4Blob) {
+                                const filename = `slowmotion_${timestamp}.mp4`;
+                                await saveFile(mp4Blob, filename);
+                                hideProgress();
+                                showStatus('슬로우 모션이 MP4로 완료되었습니다!', 'success');
+                                return;
+                            }
+                        }
+
+                        // FFmpeg 실패 시 네이티브 MP4 시도
+                        if (fileExtension === 'mp4') {
+                            const nativeBlob = new Blob(chunks, { type: mimeType });
+                            const filename = `slowmotion_${timestamp}.mp4`;
+                            await saveFile(nativeBlob, filename);
+                            hideProgress();
+                            showStatus('슬로우 모션이 완료되었습니다! (네이티브 MP4)', 'success');
+                            return;
+                        }
+
+                        // 네이티브 MP4도 안 되면 WebM 저장
+                        const filename = `slowmotion_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('슬로우 모션이 완료되었습니다! (WebM)', 'warning');
+                    } else {
+                        // WebM 저장
+                        const filename = `slowmotion_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('슬로우 모션이 완료되었습니다!', 'success');
+                    }
                 };
 
                 // 구간 캡처
@@ -3879,14 +4026,46 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const videoBlob = new Blob(chunks, { type: mimeType });
+                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // 선택된 포맷으로 저장
-                    const filename = `reversed_${timestamp}.${fileExtension}`;
-                    await saveFile(videoBlob, filename);
-                    hideProgress();
-                    showStatus(`역재생 비디오가 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
+                    // MP4 선택 시 FFmpeg 변환 시도 (localhost 전용)
+                    if (selectedFormat === 'mp4') {
+                        const ffmpegReady = await loadFFmpeg();
+                        if (ffmpegReady) {
+                            // FFmpeg로 WebM → MP4 변환
+                            const mp4Blob = await convertWebMToMP4(webmBlob, `reversed_${timestamp}`);
+                            if (mp4Blob) {
+                                const filename = `reversed_${timestamp}.mp4`;
+                                await saveFile(mp4Blob, filename);
+                                hideProgress();
+                                showStatus('역재생 비디오가 MP4로 완료되었습니다!', 'success');
+                                return;
+                            }
+                        }
+
+                        // FFmpeg 실패 시 네이티브 MP4 시도
+                        if (fileExtension === 'mp4') {
+                            const nativeBlob = new Blob(chunks, { type: mimeType });
+                            const filename = `reversed_${timestamp}.mp4`;
+                            await saveFile(nativeBlob, filename);
+                            hideProgress();
+                            showStatus('역재생 비디오가 완료되었습니다! (네이티브 MP4)', 'success');
+                            return;
+                        }
+
+                        // 네이티브 MP4도 안 되면 WebM 저장
+                        const filename = `reversed_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('역재생 비디오가 완료되었습니다! (WebM)', 'warning');
+                    } else {
+                        // WebM 저장
+                        const filename = `reversed_${timestamp}.webm`;
+                        await saveFile(webmBlob, filename);
+                        hideProgress();
+                        showStatus('역재생 비디오가 완료되었습니다!', 'success');
+                    }
                 };
 
                 // 역재생 프레임 캡처
