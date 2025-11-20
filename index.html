@@ -2572,8 +2572,36 @@
                 // MediaRecorder 설정
                 const stream = recordCanvas.captureStream(targetFps);
 
-                let mimeType = 'video/webm;codecs=vp9';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                // 선택된 포맷 확인
+                const selectedFormat = document.getElementById('highQualityFormat').value;
+                let mimeType;
+                let fileExtension;
+
+                if (selectedFormat === 'mp4') {
+                    // MP4 네이티브 지원 체크 (Safari 등에서 지원)
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        mimeType = 'video/mp4';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+                        mimeType = 'video/mp4;codecs=h264,aac';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+                        mimeType = 'video/mp4;codecs=avc1';
+                        fileExtension = 'mp4';
+                    } else {
+                        // MP4 지원 안 되면 WebM으로 폴백
+                        mimeType = 'video/webm;codecs=vp9';
+                        fileExtension = 'webm';
+                        showStatus('⚠️ 브라우저가 MP4를 지원하지 않아 WebM으로 저장됩니다', 'warning');
+                    }
+                } else {
+                    // WebM 선택
+                    mimeType = 'video/webm;codecs=vp9';
+                    fileExtension = 'webm';
+                }
+
+                // WebM 코덱 폴백
+                if (fileExtension === 'webm' && !MediaRecorder.isTypeSupported(mimeType)) {
                     mimeType = 'video/webm;codecs=vp8';
                     if (!MediaRecorder.isTypeSupported(mimeType)) {
                         mimeType = 'video/webm';
@@ -2593,17 +2621,14 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
+                    const videoBlob = new Blob(chunks, { type: mimeType });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // WebM으로만 저장 (GitHub Pages는 MP4 변환 불가)
-                    {
-                        // WebM 저장
-                        const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.webm`;
-                        await saveFile(webmBlob, filename);
-                        hideProgress();
-                        showStatus('고화질 비디오가 완료되었습니다!', 'success');
-                    }
+                    // 선택된 포맷으로 저장
+                    const filename = `highquality_${targetFps}fps_${quality}_${timestamp}.${fileExtension}`;
+                    await saveFile(videoBlob, filename);
+                    hideProgress();
+                    showStatus(`고화질 비디오가 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
                 };
 
                 // 프레임 보간 설정
@@ -2898,9 +2923,36 @@
                 // MediaRecorder 설정
                 const stream = recordCanvas.captureStream(fps);
 
-                // 코덱 지원 확인 및 설정
-                let mimeType = 'video/webm;codecs=vp9';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                // 선택된 포맷 확인
+                const selectedFormat = document.getElementById('slowMotionFormat').value;
+                let mimeType;
+                let fileExtension;
+
+                if (selectedFormat === 'mp4') {
+                    // MP4 네이티브 지원 체크 (Safari 등에서 지원)
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        mimeType = 'video/mp4';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+                        mimeType = 'video/mp4;codecs=h264,aac';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+                        mimeType = 'video/mp4;codecs=avc1';
+                        fileExtension = 'mp4';
+                    } else {
+                        // MP4 지원 안 되면 WebM으로 폴백
+                        mimeType = 'video/webm;codecs=vp9';
+                        fileExtension = 'webm';
+                        showStatus('⚠️ 브라우저가 MP4를 지원하지 않아 WebM으로 저장됩니다', 'warning');
+                    }
+                } else {
+                    // WebM 선택
+                    mimeType = 'video/webm;codecs=vp9';
+                    fileExtension = 'webm';
+                }
+
+                // WebM 코덱 폴백
+                if (fileExtension === 'webm' && !MediaRecorder.isTypeSupported(mimeType)) {
                     mimeType = 'video/webm;codecs=vp8';
                     if (!MediaRecorder.isTypeSupported(mimeType)) {
                         mimeType = 'video/webm';
@@ -2920,13 +2972,13 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    const videoBlob = new Blob(chunks, { type: mimeType });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const filename = `trimmed_${timestamp}.webm`;
+                    const filename = `slowmotion_${timestamp}.${fileExtension}`;
 
-                    await saveFile(blob, filename);
+                    await saveFile(videoBlob, filename);
                     hideProgress();
-                    showStatus('구간 잘라내기가 완료되었습니다!', 'success');
+                    showStatus(`슬로우 모션이 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
                 };
 
                 // 구간 캡처
@@ -3778,9 +3830,36 @@
                 // MediaRecorder 설정
                 const stream = recordCanvas.captureStream(fps);
 
-                // 코덱 지원 확인 및 설정
-                let mimeType = 'video/webm;codecs=vp9';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                // 선택된 포맷 확인
+                const selectedFormat = document.getElementById('reverseFormat').value;
+                let mimeType;
+                let fileExtension;
+
+                if (selectedFormat === 'mp4') {
+                    // MP4 네이티브 지원 체크 (Safari 등에서 지원)
+                    if (MediaRecorder.isTypeSupported('video/mp4')) {
+                        mimeType = 'video/mp4';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264,aac')) {
+                        mimeType = 'video/mp4;codecs=h264,aac';
+                        fileExtension = 'mp4';
+                    } else if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+                        mimeType = 'video/mp4;codecs=avc1';
+                        fileExtension = 'mp4';
+                    } else {
+                        // MP4 지원 안 되면 WebM으로 폴백
+                        mimeType = 'video/webm;codecs=vp9';
+                        fileExtension = 'webm';
+                        showStatus('⚠️ 브라우저가 MP4를 지원하지 않아 WebM으로 저장됩니다', 'warning');
+                    }
+                } else {
+                    // WebM 선택
+                    mimeType = 'video/webm;codecs=vp9';
+                    fileExtension = 'webm';
+                }
+
+                // WebM 코덱 폴백
+                if (fileExtension === 'webm' && !MediaRecorder.isTypeSupported(mimeType)) {
                     mimeType = 'video/webm;codecs=vp8';
                     if (!MediaRecorder.isTypeSupported(mimeType)) {
                         mimeType = 'video/webm';
@@ -3800,14 +3879,14 @@
                 };
 
                 mediaRecorder.onstop = async () => {
-                    const webmBlob = new Blob(chunks, { type: 'video/webm' });
+                    const videoBlob = new Blob(chunks, { type: mimeType });
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
 
-                    // WebM으로만 저장 (GitHub Pages는 MP4 변환 불가)
-                    const filename = `reversed_${timestamp}.webm`;
-                    await saveFile(webmBlob, filename);
+                    // 선택된 포맷으로 저장
+                    const filename = `reversed_${timestamp}.${fileExtension}`;
+                    await saveFile(videoBlob, filename);
                     hideProgress();
-                    showStatus('역재생 비디오가 완료되었습니다!', 'success');
+                    showStatus(`역재생 비디오가 완료되었습니다! (${fileExtension.toUpperCase()})`, 'success');
                 };
 
                 // 역재생 프레임 캡처
