@@ -1224,9 +1224,8 @@
     <!-- GIF.js 라이브러리 -->
     <script src="gif.js"></script>
 
-    <!-- FFmpeg.wasm 라이브러리 (WebM → MP4 변환) - jsdelivr CDN 사용 -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <!-- FFmpeg.wasm 0.11.6 (GitHub Pages 호환) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
@@ -1374,24 +1373,23 @@
         // FFmpeg.wasm 초기화 및 변환
         // ===============================
 
-        // FFmpeg 초기화 (lazy loading)
+        // FFmpeg 초기화 (lazy loading) - 0.11.6 API
         async function loadFFmpeg() {
             if (ffmpegLoaded) return true;
 
             try {
                 showStatus('FFmpeg 라이브러리 로딩 중...', 'info');
 
-                const { FFmpeg } = FFmpegWASM;
-                const { fetchFile: fetchFileUtil } = FFmpegUtil;
+                const { createFFmpeg, fetchFile: fetchFileFunc } = FFmpegWASM;
 
                 // 전역 변수에 할당
-                fetchFile = fetchFileUtil;
-                ffmpeg = new FFmpeg();
-
-                // GitHub Pages용 싱글스레드 버전 사용 (CORS/SharedArrayBuffer 문제 해결)
-                await ffmpeg.load({
-                    coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.12.6/dist/esm/ffmpeg-core.js'
+                fetchFile = fetchFileFunc;
+                ffmpeg = createFFmpeg({
+                    log: false,
+                    corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
                 });
+
+                await ffmpeg.load();
 
                 ffmpegLoaded = true;
                 showStatus('FFmpeg 로딩 완료!', 'success');
@@ -1403,22 +1401,20 @@
             }
         }
 
-        // WebM을 MP4로 변환
+        // WebM을 MP4로 변환 - 0.11.6 API
         async function convertWebMToMP4(webmBlob, filename) {
             try {
                 showStatus('MP4로 변환 중... 잠시만 기다려주세요.', 'info');
                 showProgress(50);
 
-                const { fetchFile } = FFmpegUtil;
-
                 // FFmpeg 파일 시스템에 WebM 쓰기
                 const inputName = 'input.webm';
                 const outputName = 'output.mp4';
 
-                await ffmpeg.writeFile(inputName, await fetchFile(webmBlob));
+                ffmpeg.FS('writeFile', inputName, await fetchFile(webmBlob));
 
                 // WebM → MP4 변환
-                await ffmpeg.exec([
+                await ffmpeg.run(
                     '-i', inputName,
                     '-c:v', 'libx264',      // H.264 비디오 코덱
                     '-preset', 'medium',     // 인코딩 속도/품질 균형
@@ -1427,15 +1423,15 @@
                     '-b:a', '128k',          // 오디오 비트레이트
                     '-movflags', '+faststart', // 스트리밍 최적화
                     outputName
-                ]);
+                );
 
                 // MP4 파일 읽기
-                const data = await ffmpeg.readFile(outputName);
+                const data = ffmpeg.FS('readFile', outputName);
                 const mp4Blob = new Blob([data.buffer], { type: 'video/mp4' });
 
                 // 임시 파일 정리
-                await ffmpeg.deleteFile(inputName);
-                await ffmpeg.deleteFile(outputName);
+                ffmpeg.FS('unlink', inputName);
+                ffmpeg.FS('unlink', outputName);
 
                 showProgress(100);
                 showStatus('MP4 변환 완료!', 'success');
@@ -5036,13 +5032,13 @@
                 const audioName = 'input_audio' + currentAudioFile.name.substring(currentAudioFile.name.lastIndexOf('.'));
                 const outputName = 'output_mixed.mp4';
 
-                // FFmpeg 파일 시스템에 파일 쓰기
+                // FFmpeg 파일 시스템에 파일 쓰기 - 0.11.6 API
                 console.log('📁 비디오 파일 쓰기...');
-                await ffmpeg.writeFile(videoName, await fetchFile(currentVideoFile));
+                ffmpeg.FS('writeFile', videoName, await fetchFile(currentVideoFile));
                 showProgress(30);
 
                 console.log('📁 오디오 파일 쓰기...');
-                await ffmpeg.writeFile(audioName, await fetchFile(currentAudioFile));
+                ffmpeg.FS('writeFile', audioName, await fetchFile(currentAudioFile));
                 showProgress(40);
 
                 // FFmpeg 명령어 생성
@@ -5098,13 +5094,13 @@
                 showStatus('오디오 합성 중... (시간이 걸릴 수 있습니다)', 'warning');
                 showProgress(50);
 
-                // FFmpeg 실행
-                await ffmpeg.exec(ffmpegArgs);
+                // FFmpeg 실행 - 0.11.6 API (배열을 풀어서 전달)
+                await ffmpeg.run(...ffmpegArgs);
 
                 showProgress(90);
 
-                // 결과 파일 읽기
-                const data = await ffmpeg.readFile(outputName);
+                // 결과 파일 읽기 - 0.11.6 API
+                const data = ffmpeg.FS('readFile', outputName);
                 const blob = new Blob([data.buffer], { type: 'video/mp4' });
 
                 showProgress(100);
@@ -5118,10 +5114,10 @@
                 a.download = `audio_mixed_${timestamp}.mp4`;
                 a.click();
 
-                // 정리
-                await ffmpeg.deleteFile(videoName);
-                await ffmpeg.deleteFile(audioName);
-                await ffmpeg.deleteFile(outputName);
+                // 정리 - 0.11.6 API
+                ffmpeg.FS('unlink', videoName);
+                ffmpeg.FS('unlink', audioName);
+                ffmpeg.FS('unlink', outputName);
 
                 hideProgress();
 
