@@ -4645,26 +4645,36 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
 
-                // 10초 타임아웃 설정
+                // 5초 타임아웃 설정 (더 짧게)
                 const timeout = setTimeout(() => {
                     console.warn(`⏱️ 썸네일 생성 타임아웃 [${index}]: ${file.name}`);
-                    URL.revokeObjectURL(video.src);
+                    cleanup();
                     resolve(getDefaultThumbnail());
-                }, 10000);
+                }, 5000);
 
-                video.preload = 'metadata';
-                video.muted = true;
-                video.playsInline = true;
+                // 정리 함수
+                function cleanup() {
+                    clearTimeout(timeout);
+                    if (video.src) {
+                        URL.revokeObjectURL(video.src);
+                    }
+                    video.onloadedmetadata = null;
+                    video.onloadeddata = null;
+                    video.onseeked = null;
+                    video.onerror = null;
+                }
 
-                video.onloadedmetadata = function() {
-                    console.log(`📊 메타데이터 로드 [${index}]: ${video.duration.toFixed(2)}초, ${video.videoWidth}x${video.videoHeight}`);
-                    // 1초 지점으로 이동 (또는 비디오 중간)
-                    video.currentTime = Math.min(1, video.duration / 2);
-                };
-
-                video.onseeked = function() {
+                // 캡처 함수
+                function captureFrame() {
                     try {
-                        console.log(`🎬 프레임 캡처 시작 [${index}]`);
+                        console.log(`🎬 프레임 캡처 시작 [${index}]: ${video.videoWidth}x${video.videoHeight}`);
+
+                        if (video.videoWidth === 0 || video.videoHeight === 0) {
+                            console.error(`❌ 비디오 크기 오류 [${index}]: ${video.videoWidth}x${video.videoHeight}`);
+                            cleanup();
+                            resolve(getDefaultThumbnail());
+                            return;
+                        }
 
                         // 썸네일 크기 설정 (비율 유지)
                         const aspectRatio = video.videoWidth / video.videoHeight;
@@ -4677,34 +4687,65 @@
                         // Data URL로 변환
                         const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-                        console.log(`✅ 썸네일 생성 성공 [${index}]: ${thumbnailUrl.substring(0, 50)}...`);
+                        console.log(`✅ 썸네일 생성 성공 [${index}]: ${file.name}`);
 
-                        // 정리
-                        clearTimeout(timeout);
-                        URL.revokeObjectURL(video.src);
+                        cleanup();
                         resolve(thumbnailUrl);
                     } catch (error) {
                         console.error(`❌ 캔버스 캡처 오류 [${index}]:`, error);
-                        clearTimeout(timeout);
-                        URL.revokeObjectURL(video.src);
+                        cleanup();
                         resolve(getDefaultThumbnail());
+                    }
+                }
+
+                video.preload = 'metadata';
+                video.muted = true;
+                video.playsInline = true;
+                video.crossOrigin = 'anonymous';  // CORS 설정
+
+                // 메타데이터 로드 완료
+                video.onloadedmetadata = function() {
+                    console.log(`📊 메타데이터 로드 [${index}]: ${video.duration.toFixed(2)}초`);
+                };
+
+                // 데이터 로드 완료 (더 안정적)
+                video.onloadeddata = function() {
+                    console.log(`📦 데이터 로드 완료 [${index}], 시크 시작...`);
+                    try {
+                        // 1초 지점 또는 중간 지점으로 이동
+                        const seekTime = Math.min(1, video.duration / 2);
+                        video.currentTime = seekTime;
+                        console.log(`⏩ 시크 위치: ${seekTime.toFixed(2)}초`);
+                    } catch (error) {
+                        console.error(`❌ 시크 오류 [${index}]:`, error);
+                        // 시크 실패 시 첫 프레임 사용
+                        video.currentTime = 0;
+                        setTimeout(() => captureFrame(), 100);
                     }
                 };
 
+                // 시크 완료
+                video.onseeked = function() {
+                    console.log(`✅ 시크 완료 [${index}]: ${video.currentTime.toFixed(2)}초`);
+                    captureFrame();
+                };
+
+                // 에러 처리
                 video.onerror = function(e) {
-                    console.error(`❌ 비디오 로드 오류 [${index}]:`, e);
-                    clearTimeout(timeout);
-                    URL.revokeObjectURL(video.src);
+                    console.error(`❌ 비디오 로드 오류 [${index}]:`, e, video.error);
+                    cleanup();
                     resolve(getDefaultThumbnail());
                 };
 
                 // 비디오 로드
                 try {
-                    video.src = URL.createObjectURL(file);
-                    console.log(`📁 파일 로드 [${index}]: ${file.name} (${formatFileSize(file.size)})`);
+                    const url = URL.createObjectURL(file);
+                    video.src = url;
+                    console.log(`📁 파일 로드 시작 [${index}]: ${file.name} (${formatFileSize(file.size)})`);
+                    video.load();  // 명시적으로 load() 호출
                 } catch (error) {
                     console.error(`❌ ObjectURL 생성 오류 [${index}]:`, error);
-                    clearTimeout(timeout);
+                    cleanup();
                     reject(error);
                 }
             });
