@@ -669,6 +669,9 @@
                 <button class="btn" onclick="showHighQualityOptions()" id="highQualityBtn" disabled style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                     ⚡ 고화질 비디오 생성
                 </button>
+                <button class="btn" onclick="showAudioMixOptions()" id="audioMixBtn" disabled style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    🎵 오디오 합성
+                </button>
             </div>
 
             <!-- 옵션 토글 버튼 -->
@@ -1131,6 +1134,81 @@
                 </button>
             </div>
 
+            <!-- 오디오 합성 옵션 -->
+            <div class="gif-controls" id="audioMixControls" style="display: none;">
+                <h3>🎵 오디오 합성 옵션</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px; padding: 10px; background: #fff8e1; border-left: 4px solid #ff9800; border-radius: 4px;">
+                    💡 비디오에 배경음악이나 사운드 효과를 추가할 수 있습니다. 원본 오디오와 믹싱하거나 완전히 교체할 수 있습니다.
+                </p>
+
+                <!-- 오디오 파일 선택 -->
+                <div class="gif-options">
+                    <label>
+                        🎵 오디오 파일 선택
+                        <input type="file" id="audioFileInput" accept="audio/*" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; width: 100%;">
+                        <small style="color: #666; margin-top: 5px; display: block;">MP3, WAV, OGG, M4A 등 지원</small>
+                    </label>
+
+                    <!-- 오디오 프리뷰 -->
+                    <div id="audioPreviewContainer" style="display: none; margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 6px;">
+                        <div style="font-weight: bold; margin-bottom: 5px; color: #333;">🎧 오디오 미리듣기</div>
+                        <audio id="audioPreview" controls style="width: 100%; margin-top: 5px;"></audio>
+                        <div id="audioFileInfo" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                    </div>
+
+                    <label style="margin-top: 15px;">
+                        원본 오디오 처리
+                        <select id="originalAudioOption" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
+                            <option value="replace">교체 (새 오디오만 사용)</option>
+                            <option value="mix" selected>믹싱 (원본 + 새 오디오)</option>
+                            <option value="keep">유지 (새 오디오를 배경으로)</option>
+                        </select>
+                        <small style="color: #666; margin-top: 5px; display: block;">
+                            교체: 원본 오디오 제거<br>
+                            믹싱: 두 오디오 혼합<br>
+                            유지: 원본을 주로, 새 오디오를 배경으로
+                        </small>
+                    </label>
+
+                    <label>
+                        새 오디오 볼륨
+                        <input type="range" id="newAudioVolume" min="0" max="200" value="100" style="width: 100%; margin-top: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+                            <span>0%</span>
+                            <span id="newAudioVolumeDisplay">100%</span>
+                            <span>200%</span>
+                        </div>
+                        <small style="color: #666; margin-top: 5px; display: block;">새로 추가할 오디오의 음량</small>
+                    </label>
+
+                    <label>
+                        원본 오디오 볼륨 (믹싱 시)
+                        <input type="range" id="originalAudioVolume" min="0" max="200" value="100" style="width: 100%; margin-top: 5px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+                            <span>0%</span>
+                            <span id="originalAudioVolumeDisplay">100%</span>
+                            <span>200%</span>
+                        </div>
+                        <small style="color: #666; margin-top: 5px; display: block;">원본 비디오 오디오의 음량</small>
+                    </label>
+
+                    <label>
+                        오디오 시작 위치
+                        <input type="number" id="audioStartTime" min="0" step="0.1" value="0" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; width: 100%;">
+                        <small style="color: #666; margin-top: 5px; display: block;">오디오가 시작될 시간 (초 단위)</small>
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <input type="checkbox" id="audioLoop" style="width: auto;">
+                        <span>오디오 반복 재생 (비디오 길이에 맞춤)</span>
+                    </label>
+                </div>
+
+                <button class="btn" onclick="startAudioMix()" id="startAudioMixBtn" disabled style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); margin-top: 15px;">
+                    ✨ 오디오 합성 시작
+                </button>
+            </div>
+
             <!-- 진행 상황 -->
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar">
@@ -1248,6 +1326,7 @@
             document.getElementById('slowMotionBtn').disabled = false;
             document.getElementById('reverseBtn').disabled = false;
             document.getElementById('highQualityBtn').disabled = false;
+            document.getElementById('audioMixBtn').disabled = false;
             document.getElementById('filterToggleBtn').disabled = false;
             document.getElementById('textToggleBtn').disabled = false;
             document.getElementById('powerSlowToggleBtn').disabled = false;
@@ -1602,6 +1681,7 @@
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             gifControls.style.display = 'none';
             trimControls.style.display = 'none';
@@ -1609,6 +1689,7 @@
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
             intervalControls.style.display = intervalControls.style.display === 'none' ? 'block' : 'none';
 
             if (intervalControls.style.display === 'block') {
@@ -1651,6 +1732,7 @@
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             intervalControls.style.display = 'none';
             trimControls.style.display = 'none';
@@ -1658,6 +1740,7 @@
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
             if (gifControls.style.display === 'block') {
@@ -1738,6 +1821,7 @@
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
@@ -1747,6 +1831,7 @@
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
 
             // 통합 타임라인 토글
             if (timelineSelector.style.display === 'none') {
@@ -2146,6 +2231,7 @@
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
@@ -2153,6 +2239,7 @@
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
             thumbnailControls.style.display = thumbnailControls.style.display === 'none' ? 'block' : 'none';
         }
 
@@ -2490,6 +2577,7 @@
             const reverseControls = document.getElementById('reverseControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
@@ -2497,6 +2585,7 @@
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
             reverseControls.style.display = reverseControls.style.display === 'none' ? 'block' : 'none';
         }
 
@@ -2509,6 +2598,7 @@
             const reverseControls = document.getElementById('reverseControls');
             const slowMotionControls = document.getElementById('slowMotionControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
 
             intervalControls.style.display = 'none';
             gifControls.style.display = 'none';
@@ -2516,6 +2606,7 @@
             thumbnailControls.style.display = 'none';
             slowMotionControls.style.display = 'none';
             reverseControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
             highQualityControls.style.display = highQualityControls.style.display === 'none' ? 'block' : 'none';
         }
 
@@ -4836,6 +4927,209 @@
         });
 
         console.log('⌨️ 화살표 키 네비게이션 활성화 (←: 10초 뒤로, →: 10초 앞으로)');
+
+        // ========================================
+        // 오디오 합성 기능
+        // ========================================
+
+        let currentAudioFile = null;  // 선택된 오디오 파일
+
+        // 오디오 합성 옵션 표시
+        function showAudioMixOptions() {
+            const intervalControls = document.getElementById('intervalCaptureControls');
+            const gifControls = document.getElementById('gifControls');
+            const trimControls = document.getElementById('trimControls');
+            const thumbnailControls = document.getElementById('thumbnailControls');
+            const slowMotionControls = document.getElementById('slowMotionControls');
+            const reverseControls = document.getElementById('reverseControls');
+            const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
+
+            intervalControls.style.display = 'none';
+            gifControls.style.display = 'none';
+            trimControls.style.display = 'none';
+            thumbnailControls.style.display = 'none';
+            slowMotionControls.style.display = 'none';
+            reverseControls.style.display = 'none';
+            highQualityControls.style.display = 'none';
+            audioMixControls.style.display = audioMixControls.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // 오디오 파일 선택 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            const audioFileInput = document.getElementById('audioFileInput');
+            const audioPreview = document.getElementById('audioPreview');
+            const audioPreviewContainer = document.getElementById('audioPreviewContainer');
+            const audioFileInfo = document.getElementById('audioFileInfo');
+            const startAudioMixBtn = document.getElementById('startAudioMixBtn');
+
+            // 오디오 파일 선택
+            audioFileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    currentAudioFile = file;
+
+                    // 오디오 미리듣기
+                    const url = URL.createObjectURL(file);
+                    audioPreview.src = url;
+                    audioPreviewContainer.style.display = 'block';
+
+                    // 파일 정보 표시
+                    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    audioFileInfo.textContent = `📁 ${file.name} (${fileSizeMB} MB)`;
+
+                    // 버튼 활성화
+                    startAudioMixBtn.disabled = false;
+
+                    console.log(`🎵 오디오 파일 로드: ${file.name} (${fileSizeMB} MB)`);
+                }
+            });
+
+            // 볼륨 슬라이더 업데이트
+            const newAudioVolume = document.getElementById('newAudioVolume');
+            const newAudioVolumeDisplay = document.getElementById('newAudioVolumeDisplay');
+            newAudioVolume.addEventListener('input', function() {
+                newAudioVolumeDisplay.textContent = this.value + '%';
+            });
+
+            const originalAudioVolume = document.getElementById('originalAudioVolume');
+            const originalAudioVolumeDisplay = document.getElementById('originalAudioVolumeDisplay');
+            originalAudioVolume.addEventListener('input', function() {
+                originalAudioVolumeDisplay.textContent = this.value + '%';
+            });
+        });
+
+        // 오디오 합성 시작
+        async function startAudioMix() {
+            if (!currentVideoFile) {
+                showStatus('비디오를 먼저 로드해주세요.', 'error');
+                return;
+            }
+
+            if (!currentAudioFile) {
+                showStatus('오디오 파일을 선택해주세요.', 'error');
+                return;
+            }
+
+            // FFmpeg 로드
+            if (!ffmpegLoaded) {
+                showStatus('FFmpeg 로딩 중...', 'info');
+                showProgress(10);
+                await loadFFmpeg();
+            }
+
+            const originalOption = document.getElementById('originalAudioOption').value;
+            const newVolume = parseFloat(document.getElementById('newAudioVolume').value) / 100;
+            const originalVolume = parseFloat(document.getElementById('originalAudioVolume').value) / 100;
+            const audioStartTime = parseFloat(document.getElementById('audioStartTime').value);
+            const audioLoop = document.getElementById('audioLoop').checked;
+
+            showStatus('오디오 합성 준비 중...', 'info');
+            showProgress(20);
+
+            try {
+                // 파일 이름 생성
+                const videoName = 'input_video.mp4';
+                const audioName = 'input_audio' + currentAudioFile.name.substring(currentAudioFile.name.lastIndexOf('.'));
+                const outputName = 'output_mixed.mp4';
+
+                // FFmpeg 파일 시스템에 파일 쓰기
+                console.log('📁 비디오 파일 쓰기...');
+                await ffmpeg.writeFile(videoName, await fetchFile(currentVideoFile));
+                showProgress(30);
+
+                console.log('📁 오디오 파일 쓰기...');
+                await ffmpeg.writeFile(audioName, await fetchFile(currentAudioFile));
+                showProgress(40);
+
+                // FFmpeg 명령어 생성
+                let ffmpegArgs = ['-i', videoName, '-i', audioName];
+
+                // 오디오 처리 옵션에 따라 필터 설정
+                if (originalOption === 'replace') {
+                    // 교체: 새 오디오만 사용
+                    ffmpegArgs.push(
+                        '-map', '0:v',  // 비디오 스트림
+                        '-map', '1:a',  // 새 오디오 스트림
+                        '-filter:a', `volume=${newVolume}`
+                    );
+                } else if (originalOption === 'mix') {
+                    // 믹싱: 두 오디오 혼합
+                    ffmpegArgs.push(
+                        '-filter_complex',
+                        `[0:a]volume=${originalVolume}[a1];[1:a]volume=${newVolume}[a2];[a1][a2]amix=inputs=2:duration=first[aout]`,
+                        '-map', '0:v',
+                        '-map', '[aout]'
+                    );
+                } else if (originalOption === 'keep') {
+                    // 유지: 원본을 주로, 새 오디오를 배경으로
+                    const bgVolume = newVolume * 0.3;  // 배경음은 30% 볼륨
+                    ffmpegArgs.push(
+                        '-filter_complex',
+                        `[0:a]volume=${originalVolume}[a1];[1:a]volume=${bgVolume}[a2];[a1][a2]amix=inputs=2:duration=first[aout]`,
+                        '-map', '0:v',
+                        '-map', '[aout]'
+                    );
+                }
+
+                // 오디오 반복 옵션
+                if (audioLoop) {
+                    ffmpegArgs.splice(3, 0, '-stream_loop', '-1');  // 오디오 무한 반복
+                }
+
+                // 오디오 시작 시간
+                if (audioStartTime > 0) {
+                    ffmpegArgs.splice(2, 0, '-ss', audioStartTime.toString());
+                }
+
+                // 출력 설정
+                ffmpegArgs.push(
+                    '-c:v', 'copy',  // 비디오 코덱 복사 (빠름)
+                    '-c:a', 'aac',   // 오디오 AAC 인코딩
+                    '-b:a', '192k',  // 오디오 비트레이트
+                    '-shortest',     // 짧은 쪽에 맞춤
+                    outputName
+                );
+
+                console.log('🎬 FFmpeg 명령:', ffmpegArgs.join(' '));
+                showStatus('오디오 합성 중... (시간이 걸릴 수 있습니다)', 'warning');
+                showProgress(50);
+
+                // FFmpeg 실행
+                await ffmpeg.exec(ffmpegArgs);
+
+                showProgress(90);
+
+                // 결과 파일 읽기
+                const data = await ffmpeg.readFile(outputName);
+                const blob = new Blob([data.buffer], { type: 'video/mp4' });
+
+                showProgress(100);
+                showStatus('오디오 합성 완료!', 'success');
+
+                // 다운로드
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                a.download = `audio_mixed_${timestamp}.mp4`;
+                a.click();
+
+                // 정리
+                await ffmpeg.deleteFile(videoName);
+                await ffmpeg.deleteFile(audioName);
+                await ffmpeg.deleteFile(outputName);
+
+                hideProgress();
+
+                console.log('✅ 오디오 합성 완료');
+
+            } catch (error) {
+                console.error('❌ 오디오 합성 오류:', error);
+                showStatus('오디오 합성 중 오류가 발생했습니다: ' + error.message, 'error');
+                hideProgress();
+            }
+        }
     </script>
 </body>
 </html>
