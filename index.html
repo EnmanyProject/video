@@ -1762,9 +1762,10 @@
             const duration = videoPlayer.duration || 10;
             trimRangeState.startTime = 0;
 
-            // 대용량 파일 대응: endTime을 duration의 10% 또는 최소 10초로 설정
-            // 예: 10초 영상 → 0~10초, 60초 영상 → 0~10초, 600초 영상 → 0~60초, 3600초 영상 → 0~360초
-            const defaultRange = Math.max(10, duration * 0.1);  // 최소 10초 또는 전체의 10%
+            // 대용량 파일 대응: endTime을 duration의 10%, 최소 10초, 최대 10분(600초)로 설정
+            // 예: 10초 영상 → 0~10초, 60초 영상 → 0~10초, 600초 영상 → 0~60초
+            //     3600초 영상 → 0~360초, 7200초 영상 → 0~600초(최대), 36000초 영상 → 0~600초(최대)
+            const defaultRange = Math.min(600, Math.max(10, duration * 0.1));  // 최소 10초, 최대 600초, 기본 10%
             trimRangeState.endTime = Math.min(defaultRange, duration);
 
             console.log(`📏 타임라인 초기화: 전체 ${duration.toFixed(1)}초, 기본 범위 0~${trimRangeState.endTime.toFixed(1)}초 (${(trimRangeState.endTime/duration*100).toFixed(1)}%)`);
