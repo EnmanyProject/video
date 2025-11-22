@@ -752,6 +752,123 @@
                 </div>
                 <canvas id="canvas"></canvas>
 
+                <!-- ========================================
+                     타임라인 통합 영역 (비디오 바로 아래)
+                     ======================================== -->
+                <div id="unifiedTimelineArea" class="mt-sm">
+                    <!-- GIF 타임라인 -->
+                    <div id="gifTimelineSection" style="display: none; padding: 15px; background: var(--color-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: var(--color-text);">🎞️ GIF 구간 선택</h4>
+                            <button class="btn" onclick="closeGifTimeline()" style="padding: 5px 15px; font-size: 12px;">닫기</button>
+                        </div>
+                        <div class="text-muted mb-md">
+                            선택 구간: <span id="gifRangeTimeDisplay" style="font-weight: bold; color: var(--color-accent);">0:00 ~ 0:03</span>
+                            (길이: <span id="gifRangeDurationDisplay" style="font-weight: bold; color: #2196F3;">0:03</span>)
+                        </div>
+
+                        <!-- GIF 타임라인 바 -->
+                        <div id="gifTimelineContainer" style="position: relative; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
+                            <div id="gifSelectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
+                            <div id="gifStartHandle" class="timeline-handle"
+                                 onmousedown="handleGifDragStart(event, 'start')"
+                                 ontouchstart="handleGifTouchStart(event, 'start')"
+                                 style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
+                                ◀
+                            </div>
+                            <div id="gifEndHandle" class="timeline-handle"
+                                 onmousedown="handleGifDragStart(event, 'end')"
+                                 ontouchstart="handleGifTouchStart(event, 'end')"
+                                 style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
+                                ▶
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 구간 자르기 타임라인 -->
+                    <div id="trimTimelineSection" style="display: none; padding: 15px; background: var(--color-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: var(--color-text);">✂️ 구간 선택</h4>
+                            <button class="btn" onclick="closeTrimTimeline()" style="padding: 5px 15px; font-size: 12px;">닫기</button>
+                        </div>
+                        <div class="text-muted mb-md">
+                            선택 구간: <span id="trimRangeTimeDisplay" style="font-weight: bold; color: var(--color-accent);">0:00 ~ 0:00</span>
+                            (길이: <span id="trimRangeDurationDisplay" style="font-weight: bold; color: #2196F3;">0:00</span>)
+                        </div>
+
+                        <!-- 구간 자르기 타임라인 바 -->
+                        <div id="trimTimelineContainer" style="position: relative; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
+                            <div id="trimSelectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
+                            <div id="trimStartHandle" class="timeline-handle"
+                                 onmousedown="handleTrimDragStart(event, 'start')"
+                                 ontouchstart="handleTrimTouchStart(event, 'start')"
+                                 style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
+                                ◀
+                            </div>
+                            <div id="trimEndHandle" class="timeline-handle"
+                                 onmousedown="handleTrimDragStart(event, 'end')"
+                                 ontouchstart="handleTrimTouchStart(event, 'end')"
+                                 style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
+                                ▶
+                            </div>
+                        </div>
+
+                        <!-- 옵션 -->
+                        <div class="mt-md" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label style="display: flex; flex-direction: column;">
+                                프레임 레이트
+                                <select id="trimFpsIntegrated" class="form-select">
+                                    <option value="24">24 fps</option>
+                                    <option value="30" selected>30 fps</option>
+                                    <option value="60">60 fps</option>
+                                </select>
+                            </label>
+                            <label style="display: flex; flex-direction: column;">
+                                비디오 품질
+                                <select id="trimQualityIntegrated" class="form-select">
+                                    <option value="10000000">최고 (10 Mbps)</option>
+                                    <option value="8000000" selected>고품질 (8 Mbps)</option>
+                                    <option value="5000000">중간 (5 Mbps)</option>
+                                    <option value="3000000">낮음 (3 Mbps)</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <button class="btn mt-md w-full" onclick="startTrimVideoIntegrated()">
+                            ✨ 선택한 구간 잘라내기
+                        </button>
+                    </div>
+
+                    <!-- 슬로우 모션 타임라인 -->
+                    <div id="slowMotionTimelineSection" style="display: none; padding: 15px; background: var(--color-bg-light); border-radius: var(--radius-lg); margin-bottom: var(--spacing-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: var(--color-text);">⏱️ 슬로우 모션 구간 선택</h4>
+                            <button class="btn" onclick="closeSlowMotionTimeline()" style="padding: 5px 15px; font-size: 12px;">닫기</button>
+                        </div>
+                        <div class="text-muted mb-md">
+                            선택 구간: <span id="slowMotionRangeTimeDisplay" style="font-weight: bold; color: var(--color-accent);">0:00 ~ 0:00</span>
+                            (길이: <span id="slowMotionRangeDurationDisplay" style="font-weight: bold; color: #2196F3;">0:00</span>)
+                        </div>
+
+                        <!-- 슬로우 모션 타임라인 바 -->
+                        <div id="slowMotionTimelineContainer" style="position: relative; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
+                            <div id="slowMotionSelectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
+                            <div id="slowMotionStartHandle" class="timeline-handle"
+                                 onmousedown="handleSlowMotionDragStart(event, 'start')"
+                                 ontouchstart="handleSlowMotionTouchStart(event, 'start')"
+                                 style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
+                                ◀
+                            </div>
+                            <div id="slowMotionEndHandle" class="timeline-handle"
+                                 onmousedown="handleSlowMotionDragStart(event, 'end')"
+                                 ontouchstart="handleSlowMotionTouchStart(event, 'end')"
+                                 style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
+                                ▶
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 파워슬로우 재생 토글 버튼 -->
                 <div class="mt-sm">
                     <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="font-weight: bold; font-size: 16px; padding: 10px 20px;">
@@ -760,7 +877,7 @@
                     <span id="powerSlowStatus" class="text-muted" style="margin-left: 10px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 단순 보간 4개 프레임)</span>
                 </div>
 
-                <!-- 타임라인 범위 선택 (구간 잘라내기) -->
+                <!-- 타임라인 범위 선택 (구간 잘라내기) - DEPRECATED, 위로 이동됨 -->
                 <div id="timelineRangeSelector" style="display: none; margin-top: 5px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 style="margin: 0; color: #333;">✂️ 구간 선택</h4>
@@ -1039,33 +1156,7 @@
             <!-- GIF 옵션 -->
             <div class="gif-controls" id="gifControls" style="display: none;">
                 <h3>GIF 생성 옵션</h3>
-
-                <!-- 타임라인 범위 선택 (GIF) -->
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">
-                        📊 GIF 구간 선택: <span id="gifRangeTimeDisplay">0:00 ~ 0:03</span> (길이: <span id="gifRangeDurationDisplay">0:03</span>)
-                    </p>
-                    <div id="gifTimelineContainer" style="position: relative; height: 60px; background: #ddd; border-radius: 4px; cursor: pointer; overflow: hidden;">
-                        <!-- 선택된 범위 하이라이트 -->
-                        <div id="gifSelectedRange" style="position: absolute; height: 100%; background: rgba(76, 175, 80, 0.3); border-left: 3px solid #4CAF50; border-right: 3px solid #4CAF50; pointer-events: none;"></div>
-
-                        <!-- 시작 핸들 -->
-                        <div id="gifStartHandle" class="timeline-handle"
-                             onmousedown="handleGifDragStart(event, 'start')"
-                             ontouchstart="handleGifTouchStart(event, 'start')"
-                             style="position: absolute; left: 0; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); touch-action: none;">
-                            ◀
-                        </div>
-
-                        <!-- 종료 핸들 -->
-                        <div id="gifEndHandle" class="timeline-handle"
-                             onmousedown="handleGifDragStart(event, 'end')"
-                             ontouchstart="handleGifTouchStart(event, 'end')"
-                             style="position: absolute; left: 100%; top: 0; width: 40px; height: 100%; background: #4CAF50; cursor: ew-resize; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-left: -40px; touch-action: none;">
-                            ▶
-                        </div>
-                    </div>
-                </div>
+                <p class="info-box">💡 <strong>타임라인</strong>이 비디오 플레이어 바로 아래에 표시됩니다. 핸들을 드래그하여 GIF로 만들 구간을 선택하세요.</p>
 
                 <div class="gif-options">
                     <label>
@@ -1914,6 +2005,11 @@
             const highQualityControls = document.getElementById('highQualityControls');
             const audioMixControls = document.getElementById('audioMixControls');
 
+            // 다른 타임라인 섹션들 숨기기
+            const trimTimelineSection = document.getElementById('trimTimelineSection');
+            const slowMotionTimelineSection = document.getElementById('slowMotionTimelineSection');
+            const gifTimelineSection = document.getElementById('gifTimelineSection');
+
             intervalControls.style.display = 'none';
             trimControls.style.display = 'none';
             thumbnailControls.style.display = 'none';
@@ -1921,12 +2017,26 @@
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
             audioMixControls.style.display = 'none';
+            trimTimelineSection.style.display = 'none';
+            slowMotionTimelineSection.style.display = 'none';
+
             gifControls.style.display = gifControls.style.display === 'none' ? 'block' : 'none';
 
             if (gifControls.style.display === 'block') {
-                // GIF 타임라인 초기화
+                // GIF 타임라인 표시 및 초기화
+                gifTimelineSection.style.display = 'block';
                 initializeGifTimeline();
+            } else {
+                gifTimelineSection.style.display = 'none';
             }
+        }
+
+        // GIF 타임라인 닫기
+        function closeGifTimeline() {
+            const gifTimelineSection = document.getElementById('gifTimelineSection');
+            const gifControls = document.getElementById('gifControls');
+            gifTimelineSection.style.display = 'none';
+            gifControls.style.display = 'none';
         }
 
         // 트림 구간 표시 업데이트
@@ -1991,9 +2101,18 @@
             dragListenersInitialized: false
         };
 
+        // 슬로우 모션 타임라인 범위 선택 상태
+        let slowMotionRangeState = {
+            startTime: 0,
+            endTime: 10,
+            isDragging: false,
+            dragTarget: null,
+            containerWidth: 0,
+            dragListenersInitialized: false
+        };
+
         // 트림 옵션 표시 (통합 타임라인)
         function showTrimOptions() {
-            const timelineSelector = document.getElementById('timelineRangeSelector');
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
@@ -2002,6 +2121,11 @@
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
             const audioMixControls = document.getElementById('audioMixControls');
+
+            // 다른 타임라인 섹션들 숨기기
+            const trimTimelineSection = document.getElementById('trimTimelineSection');
+            const slowMotionTimelineSection = document.getElementById('slowMotionTimelineSection');
+            const gifTimelineSection = document.getElementById('gifTimelineSection');
 
             // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
@@ -2012,14 +2136,161 @@
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
             audioMixControls.style.display = 'none';
+            gifTimelineSection.style.display = 'none';
+            slowMotionTimelineSection.style.display = 'none';
 
-            // 통합 타임라인 토글
-            if (timelineSelector.style.display === 'none') {
-                timelineSelector.style.display = 'block';
-                initializeTimeline();
+            // Trim 타임라인 토글
+            if (trimTimelineSection.style.display === 'none') {
+                trimTimelineSection.style.display = 'block';
+                initializeTrimTimeline();
             } else {
-                timelineSelector.style.display = 'none';
+                trimTimelineSection.style.display = 'none';
             }
+        }
+
+        // Trim 타임라인 닫기
+        function closeTrimTimeline() {
+            const trimTimelineSection = document.getElementById('trimTimelineSection');
+            trimTimelineSection.style.display = 'none';
+        }
+
+        // Trim 타임라인 초기화
+        function initializeTrimTimeline() {
+            const duration = videoPlayer.duration || 10;
+            trimRangeState.startTime = 0;
+
+            // 대용량 파일 대응: endTime을 duration의 10%, 최소 10초, 최대 10분(600초)로 설정
+            const defaultRange = Math.min(600, Math.max(10, duration * 0.1));
+            trimRangeState.endTime = Math.min(defaultRange, duration);
+
+            console.log(`✂️ Trim 타임라인 초기화: 전체 ${duration.toFixed(1)}초, 기본 범위 0~${trimRangeState.endTime.toFixed(1)}초`);
+
+            // 타임라인 컨테이너의 너비를 비디오 플레이어와 동일하게 설정
+            const timelineContainer = document.getElementById('trimTimelineContainer');
+            const videoWidth = videoPlayer.offsetWidth;
+            timelineContainer.style.width = `${videoWidth}px`;
+            trimRangeState.containerWidth = videoWidth;
+
+            updateTrimTimelineDisplay();
+
+            // 드래그 리스너는 한 번만 초기화
+            if (!trimRangeState.dragListenersInitialized) {
+                setupTrimTimelineDrag();
+                trimRangeState.dragListenersInitialized = true;
+            }
+        }
+
+        // Trim 타임라인 표시 업데이트
+        function updateTrimTimelineDisplay() {
+            const duration = videoPlayer.duration || 10;
+
+            const startPercent = (trimRangeState.startTime / duration) * 100;
+            const endPercent = (trimRangeState.endTime / duration) * 100;
+
+            // 핸들 위치 업데이트
+            const startHandle = document.getElementById('trimStartHandle');
+            const endHandle = document.getElementById('trimEndHandle');
+            const selectedRange = document.getElementById('trimSelectedRange');
+
+            startHandle.style.left = startPercent + '%';
+            endHandle.style.left = endPercent + '%';
+
+            selectedRange.style.left = startPercent + '%';
+            selectedRange.style.width = (endPercent - startPercent) + '%';
+
+            // 시간 텍스트 업데이트
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+
+            document.getElementById('trimRangeTimeDisplay').textContent =
+                `${formatTime(trimRangeState.startTime)} ~ ${formatTime(trimRangeState.endTime)}`;
+            document.getElementById('trimRangeDurationDisplay').textContent =
+                formatTime(trimRangeState.endTime - trimRangeState.startTime);
+        }
+
+        // Trim 드래그 시작 함수
+        function handleTrimDragStart(e, target) {
+            e.preventDefault();
+            trimRangeState.isDragging = true;
+            trimRangeState.dragTarget = target;
+        }
+
+        // Trim 터치 시작 함수
+        function handleTrimTouchStart(e, target) {
+            handleTrimDragStart(e, target);
+        }
+
+        // Trim 타임라인 드래그 설정
+        function setupTrimTimelineDrag() {
+            // 마우스 이동
+            let mouseMoveHandler = (e) => {
+                if (!trimRangeState.isDragging) return;
+
+                const container = document.getElementById('trimTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (trimRangeState.dragTarget === 'start') {
+                    trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = trimRangeState.startTime;
+                } else if (trimRangeState.dragTarget === 'end') {
+                    trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = trimRangeState.endTime;
+                }
+
+                updateTrimTimelineDisplay();
+            };
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+
+            // 터치 이동 핸들러
+            let touchMoveHandler = (e) => {
+                if (!trimRangeState.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const container = document.getElementById('trimTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (trimRangeState.dragTarget === 'start') {
+                    trimRangeState.startTime = Math.min(newTime, trimRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = trimRangeState.startTime;
+                } else if (trimRangeState.dragTarget === 'end') {
+                    trimRangeState.endTime = Math.max(newTime, trimRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = trimRangeState.endTime;
+                }
+
+                updateTrimTimelineDisplay();
+            };
+
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+
+            // 마우스 업
+            let mouseUpHandler = () => {
+                trimRangeState.isDragging = false;
+                trimRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('mouseup', mouseUpHandler);
+
+            // 터치 종료
+            let touchEndHandler = () => {
+                trimRangeState.isDragging = false;
+                trimRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('touchend', touchEndHandler);
+            document.addEventListener('touchcancel', touchEndHandler);
         }
 
         // 타임라인 초기화
@@ -2720,7 +2991,6 @@
 
         // 슬로우 모션 옵션 표시
         function showSlowMotionOptions() {
-            const timelineSelector = document.getElementById('timelineRangeSelector');
             const intervalControls = document.getElementById('intervalCaptureControls');
             const gifControls = document.getElementById('gifControls');
             const trimControls = document.getElementById('trimControls');
@@ -2728,6 +2998,12 @@
             const slowMotionControls = document.getElementById('slowMotionControls');
             const reverseControls = document.getElementById('reverseControls');
             const highQualityControls = document.getElementById('highQualityControls');
+            const audioMixControls = document.getElementById('audioMixControls');
+
+            // 다른 타임라인 섹션들 숨기기
+            const trimTimelineSection = document.getElementById('trimTimelineSection');
+            const slowMotionTimelineSection = document.getElementById('slowMotionTimelineSection');
+            const gifTimelineSection = document.getElementById('gifTimelineSection');
 
             // 모든 다른 옵션 숨기기
             intervalControls.style.display = 'none';
@@ -2736,16 +3012,166 @@
             thumbnailControls.style.display = 'none';
             reverseControls.style.display = 'none';
             highQualityControls.style.display = 'none';
+            audioMixControls.style.display = 'none';
+            trimTimelineSection.style.display = 'none';
+            gifTimelineSection.style.display = 'none';
 
             // 슬로우 모션 옵션과 타임라인 토글
             if (slowMotionControls.style.display === 'none') {
                 slowMotionControls.style.display = 'block';
-                timelineSelector.style.display = 'block';
-                initializeTimeline();
+                slowMotionTimelineSection.style.display = 'block';
+                initializeSlowMotionTimeline();
             } else {
                 slowMotionControls.style.display = 'none';
-                timelineSelector.style.display = 'none';
+                slowMotionTimelineSection.style.display = 'none';
             }
+        }
+
+        // Slow Motion 타임라인 닫기
+        function closeSlowMotionTimeline() {
+            const slowMotionTimelineSection = document.getElementById('slowMotionTimelineSection');
+            const slowMotionControls = document.getElementById('slowMotionControls');
+            slowMotionTimelineSection.style.display = 'none';
+            slowMotionControls.style.display = 'none';
+        }
+
+        // Slow Motion 타임라인 초기화
+        function initializeSlowMotionTimeline() {
+            const duration = videoPlayer.duration || 10;
+            slowMotionRangeState.startTime = 0;
+
+            // 대용량 파일 대응: endTime을 duration의 10%, 최소 10초, 최대 10분(600초)로 설정
+            const defaultRange = Math.min(600, Math.max(10, duration * 0.1));
+            slowMotionRangeState.endTime = Math.min(defaultRange, duration);
+
+            console.log(`🐌 Slow Motion 타임라인 초기화: 전체 ${duration.toFixed(1)}초, 기본 범위 0~${slowMotionRangeState.endTime.toFixed(1)}초`);
+
+            // 타임라인 컨테이너의 너비를 비디오 플레이어와 동일하게 설정
+            const timelineContainer = document.getElementById('slowMotionTimelineContainer');
+            const videoWidth = videoPlayer.offsetWidth;
+            timelineContainer.style.width = `${videoWidth}px`;
+            slowMotionRangeState.containerWidth = videoWidth;
+
+            updateSlowMotionTimelineDisplay();
+
+            // 드래그 리스너는 한 번만 초기화
+            if (!slowMotionRangeState.dragListenersInitialized) {
+                setupSlowMotionTimelineDrag();
+                slowMotionRangeState.dragListenersInitialized = true;
+            }
+        }
+
+        // Slow Motion 타임라인 표시 업데이트
+        function updateSlowMotionTimelineDisplay() {
+            const duration = videoPlayer.duration || 10;
+
+            const startPercent = (slowMotionRangeState.startTime / duration) * 100;
+            const endPercent = (slowMotionRangeState.endTime / duration) * 100;
+
+            // 핸들 위치 업데이트
+            const startHandle = document.getElementById('slowMotionStartHandle');
+            const endHandle = document.getElementById('slowMotionEndHandle');
+            const selectedRange = document.getElementById('slowMotionSelectedRange');
+
+            startHandle.style.left = startPercent + '%';
+            endHandle.style.left = endPercent + '%';
+
+            selectedRange.style.left = startPercent + '%';
+            selectedRange.style.width = (endPercent - startPercent) + '%';
+
+            // 시간 텍스트 업데이트
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+
+            document.getElementById('slowMotionRangeTimeDisplay').textContent =
+                `${formatTime(slowMotionRangeState.startTime)} ~ ${formatTime(slowMotionRangeState.endTime)}`;
+            document.getElementById('slowMotionRangeDurationDisplay').textContent =
+                formatTime(slowMotionRangeState.endTime - slowMotionRangeState.startTime);
+        }
+
+        // Slow Motion 드래그 시작 함수
+        function handleSlowMotionDragStart(e, target) {
+            e.preventDefault();
+            slowMotionRangeState.isDragging = true;
+            slowMotionRangeState.dragTarget = target;
+        }
+
+        // Slow Motion 터치 시작 함수
+        function handleSlowMotionTouchStart(e, target) {
+            handleSlowMotionDragStart(e, target);
+        }
+
+        // Slow Motion 타임라인 드래그 설정
+        function setupSlowMotionTimelineDrag() {
+            // 마우스 이동
+            let mouseMoveHandler = (e) => {
+                if (!slowMotionRangeState.isDragging) return;
+
+                const container = document.getElementById('slowMotionTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (slowMotionRangeState.dragTarget === 'start') {
+                    slowMotionRangeState.startTime = Math.min(newTime, slowMotionRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = slowMotionRangeState.startTime;
+                } else if (slowMotionRangeState.dragTarget === 'end') {
+                    slowMotionRangeState.endTime = Math.max(newTime, slowMotionRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = slowMotionRangeState.endTime;
+                }
+
+                updateSlowMotionTimelineDisplay();
+            };
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+
+            // 터치 이동 핸들러
+            let touchMoveHandler = (e) => {
+                if (!slowMotionRangeState.isDragging) return;
+                e.preventDefault();
+
+                const touch = e.touches[0];
+                const container = document.getElementById('slowMotionTimelineContainer');
+                const rect = container.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const percent = Math.max(0, Math.min(1, x / rect.width));
+                const duration = videoPlayer.duration || 10;
+                const newTime = percent * duration;
+
+                if (slowMotionRangeState.dragTarget === 'start') {
+                    slowMotionRangeState.startTime = Math.min(newTime, slowMotionRangeState.endTime - 0.5);
+                    videoPlayer.currentTime = slowMotionRangeState.startTime;
+                } else if (slowMotionRangeState.dragTarget === 'end') {
+                    slowMotionRangeState.endTime = Math.max(newTime, slowMotionRangeState.startTime + 0.5);
+                    videoPlayer.currentTime = slowMotionRangeState.endTime;
+                }
+
+                updateSlowMotionTimelineDisplay();
+            };
+
+            document.addEventListener('touchmove', touchMoveHandler, { passive: false });
+
+            // 마우스 업
+            let mouseUpHandler = () => {
+                slowMotionRangeState.isDragging = false;
+                slowMotionRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('mouseup', mouseUpHandler);
+
+            // 터치 종료
+            let touchEndHandler = () => {
+                slowMotionRangeState.isDragging = false;
+                slowMotionRangeState.dragTarget = null;
+            };
+
+            document.addEventListener('touchend', touchEndHandler);
+            document.addEventListener('touchcancel', touchEndHandler);
         }
 
         // 역재생 옵션 표시
