@@ -6,6 +6,87 @@
     <title>비디오 편집기 - 내부 작업용</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
     <style>
+        /* ========================================
+           CSS 변수 (디자인 시스템)
+           ======================================== */
+        :root {
+            /* Colors - Primary */
+            --color-primary: #667eea;
+            --color-primary-dark: #764ba2;
+            --color-primary-light: #f0f0ff;
+
+            /* Colors - Secondary */
+            --color-secondary: #f093fb;
+            --color-secondary-dark: #f5576c;
+
+            /* Colors - Success */
+            --color-success: #4facfe;
+            --color-success-dark: #00f2fe;
+
+            /* Colors - Audio */
+            --color-audio: #fa709a;
+            --color-audio-dark: #fee140;
+
+            /* Colors - Accent */
+            --color-accent: #4CAF50;
+            --color-accent-hover: #45a049;
+            --color-accent-active: #3d8b40;
+
+            /* Colors - Neutral */
+            --color-white: #ffffff;
+            --color-black: #000000;
+            --color-gray-100: #f8f9fa;
+            --color-gray-200: #e9ecef;
+            --color-gray-300: #ddd;
+            --color-gray-400: #999;
+            --color-gray-500: #666;
+            --color-gray-600: #333;
+
+            /* Colors - Functional */
+            --color-border: #ddd;
+            --color-bg-light: #f8f9fa;
+            --color-text: #333;
+            --color-text-muted: #666;
+
+            /* Spacing */
+            --spacing-xs: 5px;
+            --spacing-sm: 10px;
+            --spacing-md: 15px;
+            --spacing-lg: 20px;
+            --spacing-xl: 25px;
+            --spacing-2xl: 30px;
+
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 10px;
+            --radius-2xl: 12px;
+            --radius-3xl: 15px;
+            --radius-4xl: 20px;
+
+            /* Borders */
+            --border-width: 2px;
+            --border-width-sm: 1px;
+            --border-width-lg: 3px;
+            --border-width-xl: 4px;
+
+            /* Shadows */
+            --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.15);
+            --shadow-xl: 0 10px 30px rgba(0, 0, 0, 0.2);
+            --shadow-2xl: 0 20px 60px rgba(0, 0, 0, 0.3);
+            --shadow-button: 0 5px 15px rgba(102, 126, 234, 0.4);
+
+            /* Transitions */
+            --transition-fast: 0.2s;
+            --transition-base: 0.3s;
+        }
+
+        /* ========================================
+           Reset & Base Styles
+           ======================================== */
         * {
             margin: 0;
             padding: 0;
@@ -14,30 +95,33 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-lg);
         }
 
+        /* ========================================
+           Layout Components
+           ======================================== */
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: var(--color-white);
+            border-radius: var(--radius-4xl);
+            box-shadow: var(--shadow-2xl);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: var(--color-white);
+            padding: var(--spacing-2xl);
             text-align: center;
         }
 
         .header h1 {
             font-size: 2.5em;
-            margin-bottom: 10px;
+            margin-bottom: var(--spacing-sm);
         }
 
         .header p {
@@ -46,64 +130,70 @@
         }
 
         .content {
-            padding: 30px;
+            padding: var(--spacing-2xl);
         }
 
+        /* ========================================
+           Section Components
+           ======================================== */
         .input-section {
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 30px;
+            background: var(--color-bg-light);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-3xl);
+            margin-bottom: var(--spacing-2xl);
         }
 
         .input-section h2 {
-            color: #667eea;
-            margin-bottom: 20px;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-lg);
             font-size: 1.5em;
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
         }
 
         .input-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: var(--spacing-lg);
             font-weight: 600;
-            color: #333;
+            color: var(--color-text);
         }
 
         .input-group input[type="file"],
         .input-group input[type="text"] {
             width: 100%;
             padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            border: var(--border-width) solid var(--color-border);
+            border-radius: var(--radius-lg);
             font-size: 1em;
-            transition: border-color 0.3s;
+            transition: border-color var(--transition-base);
         }
 
         .input-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--color-primary);
         }
 
+        /* ========================================
+           Button Components
+           ======================================== */
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: var(--color-white);
             border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
+            padding: 12px var(--spacing-2xl);
+            border-radius: var(--radius-lg);
             font-size: 1em;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin: 5px;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+            margin: var(--spacing-xs);
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: var(--shadow-button);
         }
 
         .btn:active {
@@ -117,15 +207,67 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-dark) 100%);
         }
 
+        .btn-audio {
+            background: linear-gradient(135deg, var(--color-audio) 0%, var(--color-audio-dark) 100%);
+        }
+
+        /* Filter Preset Buttons */
+        .btn-reset {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+
+        .btn-bw {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        }
+
+        .btn-sepia {
+            background: linear-gradient(135deg, #d4a574 0%, #a67c52 100%);
+        }
+
+        .btn-vintage {
+            background: linear-gradient(135deg, #e8c4a0 0%, #c9a882 100%);
+        }
+
+        .btn-vivid {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+        }
+
+        .btn-folder {
+            background: var(--color-primary);
+            color: var(--color-white);
+            border: none;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .btn-folder:hover {
+            background: #5568d3;
+        }
+
+        /* Full Width Utility */
+        .w-full {
+            width: 100%;
+        }
+
+        /* ========================================
+           Video Player Section
+           ======================================== */
         .video-section {
-            margin-bottom: 30px;
+            margin-bottom: var(--spacing-2xl);
             text-align: center;
             position: relative;
             display: flex;
@@ -142,9 +284,9 @@
         #videoPlayer {
             width: 100%;
             max-width: 800px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            background: #000;
+            border-radius: var(--radius-3xl);
+            box-shadow: var(--shadow-xl);
+            background: var(--color-black);
             display: block;
         }
 
@@ -155,24 +297,34 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            border-radius: 15px;
+            border-radius: var(--radius-3xl);
             z-index: 10;
         }
 
+        #canvas {
+            display: none;
+        }
+
+        /* ========================================
+           Controls Section
+           ======================================== */
         .controls {
-            margin-top: 20px;
+            margin-top: var(--spacing-lg);
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
+            gap: var(--spacing-sm);
         }
 
+        /* ========================================
+           Status & Progress Components
+           ======================================== */
         .status {
             background: #e3f2fd;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 8px;
+            border-left: var(--border-width-xl) solid #2196F3;
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+            border-radius: var(--radius-lg);
             display: none;
         }
 
@@ -182,7 +334,7 @@
 
         .status.success {
             background: #e8f5e9;
-            border-color: #4caf50;
+            border-color: var(--color-accent);
         }
 
         .status.error {
@@ -196,7 +348,7 @@
         }
 
         .progress-container {
-            margin-top: 20px;
+            margin-top: var(--spacing-lg);
             display: none;
         }
 
@@ -208,135 +360,154 @@
             width: 100%;
             height: 30px;
             background: #f0f0f0;
-            border-radius: 15px;
+            border-radius: var(--radius-3xl);
             overflow: hidden;
             box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s;
+            background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            transition: width var(--transition-base);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--color-white);
             font-weight: 600;
             font-size: 0.9em;
         }
 
-        #canvas {
-            display: none;
-        }
-
-        #previewCanvas {
-            display: block;
-        }
-
+        /* ========================================
+           Playback & Timeline Controls
+           ======================================== */
         .playback-speed-control {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-top: 15px;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
             padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            background: var(--color-bg-light);
+            border-radius: var(--radius-lg);
         }
 
         .playback-speed-control label {
             font-weight: 600;
-            color: #667eea;
+            color: var(--color-primary);
             font-size: 1em;
         }
 
-        .playback-speed-control select {
-            padding: 8px 15px;
-            border: 2px solid #667eea;
-            border-radius: 6px;
+        .playback-speed-control select,
+        .form-select {
+            padding: var(--spacing-lg) var(--spacing-md);
+            border: var(--border-width) solid var(--color-primary);
+            border-radius: var(--radius-md);
             font-size: 1em;
             font-weight: 600;
-            background: white;
-            color: #333;
+            background: var(--color-white);
+            color: var(--color-text);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--transition-base);
         }
 
-        .playback-speed-control select:hover {
-            background: #f0f0ff;
-            border-color: #764ba2;
+        .playback-speed-control select:hover,
+        .form-select:hover {
+            background: var(--color-primary-light);
+            border-color: var(--color-primary-dark);
         }
 
-        .playback-speed-control select:focus {
+        .playback-speed-control select:focus,
+        .form-select:focus {
             outline: none;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
         }
 
-        /* 타임라인 핸들 스타일 */
         .timeline-handle {
-            transition: all 0.2s ease;
+            transition: all var(--transition-fast) ease;
         }
 
         .timeline-handle:hover {
-            background: #45a049 !important;
+            background: var(--color-accent-hover) !important;
             transform: scaleX(1.1);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+            box-shadow: var(--shadow-md) !important;
         }
 
         .timeline-handle:active {
-            background: #3d8b40 !important;
+            background: var(--color-accent-active) !important;
             transform: scaleX(1.05);
         }
 
+        /* ========================================
+           Option Panels (공통 컴포넌트)
+           ======================================== */
+        .option-panel,
         .gif-controls {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            margin-top: 20px;
+            background: var(--color-bg-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-3xl);
+            margin-top: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            display: none;
         }
 
+        .option-panel.show,
+        .gif-controls.show {
+            display: block;
+        }
+
+        .option-panel h3,
         .gif-controls h3 {
-            color: #667eea;
-            margin-bottom: 15px;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-md);
         }
 
+        .option-grid,
         .gif-options {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
         }
 
+        .option-grid label,
         .gif-options label {
             display: flex;
             flex-direction: column;
             font-weight: 600;
-            color: #333;
+            color: var(--color-text);
         }
 
+        .option-grid input,
+        .option-grid select,
         .gif-options input,
         .gif-options select {
-            margin-top: 5px;
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
+            margin-top: var(--spacing-xs);
+            padding: var(--spacing-lg);
+            border: var(--border-width) solid var(--color-border);
+            border-radius: var(--radius-md);
             width: 100%;
         }
 
+        .option-grid small,
         .gif-options small {
             display: block;
             font-size: 0.85em;
+            color: var(--color-text-muted);
+            margin-top: var(--spacing-xs);
         }
 
+        /* ========================================
+           Folder Selector
+           ======================================== */
         .folder-selector {
             background: #e8f4f8;
-            border: 2px dashed #667eea;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+            border: var(--border-width) dashed var(--color-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: var(--spacing-md);
         }
 
         .folder-selector.active {
@@ -350,29 +521,38 @@
 
         .folder-info .label {
             font-weight: 600;
-            color: #667eea;
-            margin-bottom: 5px;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-xs);
         }
 
         .folder-info .path {
-            color: #666;
+            color: var(--color-text-muted);
             font-size: 0.9em;
         }
 
-        .btn-folder {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            white-space: nowrap;
+        /* ========================================
+           Utility Classes
+           ======================================== */
+        .info-box {
+            padding: var(--spacing-sm);
+            background: #f0f8ff;
+            border-left: var(--border-width-xl) solid var(--color-accent);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-md);
         }
 
-        .btn-folder:hover {
-            background: #5568d3;
+        .text-muted {
+            color: var(--color-text-muted);
+            font-size: 14px;
         }
+
+        .mt-xs { margin-top: var(--spacing-xs); }
+        .mt-sm { margin-top: var(--spacing-sm); }
+        .mt-md { margin-top: var(--spacing-md); }
+        .mt-lg { margin-top: var(--spacing-lg); }
+
+        .mb-md { margin-bottom: var(--spacing-md); }
+        .mb-lg { margin-bottom: var(--spacing-lg); }
 
         @media (max-width: 768px) {
             .header h1 {
@@ -531,11 +711,11 @@
                     <button class="btn" onclick="loadVideoFromURL()" style="margin-top: 10px;">URL에서 불러오기</button>
                 </div>
 
-                <div class="input-group" style="margin-top: 15px;">
-                    <button class="btn" onclick="openVideoFolder()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); width: 100%;">
+                <div class="input-group mt-md">
+                    <button class="btn btn-secondary w-full" onclick="openVideoFolder()">
                         📂 비디오 폴더 열기
                     </button>
-                    <small style="color: #666; margin-top: 5px; display: block;">폴더 내 모든 비디오를 갤러리로 표시합니다</small>
+                    <small class="text-muted mt-xs">폴더 내 모든 비디오를 갤러리로 표시합니다</small>
                 </div>
 
                 <!-- 비디오 갤러리 -->
@@ -573,11 +753,11 @@
                 <canvas id="canvas"></canvas>
 
                 <!-- 파워슬로우 재생 토글 버튼 -->
-                <div style="margin-top: 10px;">
-                    <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-weight: bold; font-size: 16px; padding: 10px 20px;">
+                <div class="mt-sm">
+                    <button class="btn" onclick="togglePowerSlowPlayback()" id="powerSlowToggleBtn" disabled style="font-weight: bold; font-size: 16px; padding: 10px 20px;">
                         ⚡ 파워슬로우 재생 OFF
                     </button>
-                    <span id="powerSlowStatus" style="margin-left: 10px; color: #666; font-size: 14px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 단순 보간 4개 프레임)</span>
+                    <span id="powerSlowStatus" class="text-muted" style="margin-left: 10px;">재생 중 버튼을 누르면 실시간 슬로우 모션 (4배 슬로우, 단순 보간 4개 프레임)</span>
                 </div>
 
                 <!-- 타임라인 범위 선택 (구간 잘라내기) -->
@@ -634,7 +814,7 @@
                         </label>
                     </div>
 
-                    <button class="btn" onclick="startTrimVideoIntegrated()" style="margin-top: 15px; width: 100%;">
+                    <button class="btn mt-md w-full" onclick="startTrimVideoIntegrated()">
                         ✨ 선택한 구간 잘라내기
                     </button>
                 </div>
@@ -660,32 +840,32 @@
                 <button class="btn btn-success" onclick="showThumbnailOptions()" id="thumbnailBtn" disabled>
                     🖼️ 썸네일 생성
                 </button>
-                <button class="btn" onclick="showSlowMotionOptions()" id="slowMotionBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <button class="btn" onclick="showSlowMotionOptions()" id="slowMotionBtn" disabled>
                     ⏱️ 슬로우 모션
                 </button>
                 <button class="btn" onclick="showReverseOptions()" id="reverseBtn" disabled>
                     ⏪ 역재생 비디오 생성
                 </button>
-                <button class="btn" onclick="showHighQualityOptions()" id="highQualityBtn" disabled style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <button class="btn btn-secondary" onclick="showHighQualityOptions()" id="highQualityBtn" disabled>
                     ⚡ 고화질 비디오 생성
                 </button>
-                <button class="btn" onclick="showAudioMixOptions()" id="audioMixBtn" disabled style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <button class="btn btn-audio" onclick="showAudioMixOptions()" id="audioMixBtn" disabled>
                     🎵 오디오 합성
                 </button>
             </div>
 
             <!-- 옵션 토글 버튼 -->
-            <div class="controls" style="margin-top: 10px;">
-                <button class="btn" onclick="toggleFilters()" id="filterToggleBtn" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="controls mt-sm">
+                <button class="btn" onclick="toggleFilters()" id="filterToggleBtn" disabled>
                     🎨 필터 조절 ▼
                 </button>
-                <button class="btn" onclick="toggleTextOptions()" id="textToggleBtn" disabled style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <button class="btn btn-secondary" onclick="toggleTextOptions()" id="textToggleBtn" disabled>
                     ✏️ 텍스트 추가 ▼
                 </button>
             </div>
 
             <!-- 재생속도 조절 -->
-            <div class="playback-speed-control" style="margin-top: 10px;">
+            <div class="playback-speed-control mt-sm">
                 <label for="playbackSpeed">⚡ 재생 속도:</label>
                 <select id="playbackSpeed" onchange="changePlaybackSpeed()">
                     <option value="0.25">0.25x</option>
@@ -700,7 +880,7 @@
             </div>
 
             <!-- 필터 조절 옵션 -->
-            <div class="gif-controls" id="filterControls" style="margin-bottom: 15px; display: none;">
+            <div class="gif-controls mb-md" id="filterControls" style="display: none;">
                 <h3>🎨 비디오 필터 조절 (선택사항)</h3>
                 <div class="gif-options">
                     <label>
@@ -734,29 +914,29 @@
                         <small style="color: #666; margin-top: 5px;">현재: <span id="grayscaleValue">0</span>%</small>
                     </label>
                 </div>
-                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn" onclick="applyFilterPreset('none')" style="background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);">
+                <div class="mt-md" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-reset" onclick="applyFilterPreset('none')">
                         🔄 필터 초기화
                     </button>
-                    <button class="btn" onclick="applyFilterPreset('bw')" style="background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);">
+                    <button class="btn btn-bw" onclick="applyFilterPreset('bw')">
                         ⚫ 흑백
                     </button>
-                    <button class="btn" onclick="applyFilterPreset('sepia')" style="background: linear-gradient(135deg, #d4a574 0%, #a67c52 100%);">
+                    <button class="btn btn-sepia" onclick="applyFilterPreset('sepia')">
                         🟤 세피아
                     </button>
-                    <button class="btn" onclick="applyFilterPreset('vintage')" style="background: linear-gradient(135deg, #e8c4a0 0%, #c9a882 100%);">
+                    <button class="btn btn-vintage" onclick="applyFilterPreset('vintage')">
                         📷 빈티지
                     </button>
-                    <button class="btn" onclick="applyFilterPreset('vivid')" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                    <button class="btn btn-vivid" onclick="applyFilterPreset('vivid')">
                         🌈 선명하게
                     </button>
                 </div>
             </div>
 
             <!-- 캡처 텍스트 옵션 -->
-            <div class="gif-controls" id="textControls" style="margin-bottom: 15px; display: none;">
+            <div class="gif-controls mb-md" id="textControls" style="display: none;">
                 <h3>✏️ 캡처 텍스트 추가 (선택사항)</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 15px; padding: 10px; background: #f0f8ff; border-left: 4px solid #4CAF50; border-radius: 4px;">
+                <p class="info-box">
                     💡 <strong>사용법:</strong> 아래에서 텍스트를 입력한 후 <strong>📸 PNG/JPG 캡처</strong> 버튼을 누르면 입력한 텍스트가 이미지에 자동으로 포함되어 저장됩니다.
                 </p>
                 <div class="gif-options">
@@ -851,7 +1031,7 @@
                 <button class="btn btn-secondary" onclick="startIntervalCapture()" id="startIntervalBtn">
                     ✨ 간격 캡처 시작
                 </button>
-                <button class="btn" onclick="stopIntervalCapture()" id="stopIntervalBtn" style="display: none; background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);">
+                <button class="btn btn-stop" onclick="stopIntervalCapture()" id="stopIntervalBtn" style="display: none;">
                     ⏹️ 중지
                 </button>
             </div>
@@ -1129,7 +1309,7 @@
                         <span>현재 필터 적용</span>
                     </label>
                 </div>
-                <button class="btn" onclick="startHighQualityVideo()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); margin-top: 15px;">
+                <button class="btn btn-secondary mt-md" onclick="startHighQualityVideo()">
                     ✨ 고화질 비디오 생성
                 </button>
             </div>
@@ -1204,7 +1384,7 @@
                     </label>
                 </div>
 
-                <button class="btn" onclick="startAudioMix()" id="startAudioMixBtn" disabled style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); margin-top: 15px;">
+                <button class="btn btn-audio mt-md" onclick="startAudioMix()" id="startAudioMixBtn" disabled>
                     ✨ 오디오 합성 시작
                 </button>
             </div>
