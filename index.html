@@ -1159,6 +1159,13 @@
                 <p class="info-box">💡 <strong>타임라인</strong>이 비디오 플레이어 바로 아래에 표시됩니다. 핸들을 드래그하여 GIF로 만들 구간을 선택하세요.</p>
 
                 <div class="gif-options">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">
+                        <input type="checkbox" id="gifOptimize3MB" onchange="toggleGifOptimization()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <strong style="color: #2196F3;">📦 3MB 이하 최적화</strong>
+                            <small style="display: block; color: #666; margin-top: 3px;">파일 크기를 자동으로 3MB 이하로 조정합니다</small>
+                        </div>
+                    </label>
                     <label>
                         프레임 레이트 (fps)
                         <input type="number" id="gifFps" value="10" min="5" max="30" step="5">
@@ -1193,6 +1200,13 @@
                     선택한 구간: <span id="trimRangeDisplay">0.0초 ~ 10.0초</span> (길이: <span id="trimDurationDisplay">10.0초</span>)
                 </p>
                 <div class="gif-options">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">
+                        <input type="checkbox" id="trimOptimize3MB" onchange="toggleTrimOptimization()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <strong style="color: #2196F3;">📦 3MB 이하 최적화</strong>
+                            <small style="display: block; color: #666; margin-top: 3px;">파일 크기를 자동으로 3MB 이하로 조정합니다</small>
+                        </div>
+                    </label>
                     <label>
                         시작 시간
                         <input type="range" id="trimStartTime" value="0" min="0" step="0.1" oninput="updateTrimRange()">
@@ -1277,6 +1291,13 @@
             <div class="gif-controls" id="slowMotionControls" style="display: none;">
                 <h3>⏱️ 슬로우 모션 옵션</h3>
                 <div class="gif-options">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">
+                        <input type="checkbox" id="slowMotionOptimize3MB" onchange="toggleSlowMotionOptimization()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <strong style="color: #2196F3;">📦 3MB 이하 최적화</strong>
+                            <small style="display: block; color: #666; margin-top: 3px;">파일 크기를 자동으로 3MB 이하로 조정합니다</small>
+                        </div>
+                    </label>
                     <label>
                         슬로우 모션 속도
                         <select id="slowMotionSpeed" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
@@ -1325,6 +1346,13 @@
             <div class="gif-controls" id="reverseControls" style="display: none;">
                 <h3>역재생 생성 옵션</h3>
                 <div class="gif-options">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">
+                        <input type="checkbox" id="reverseOptimize3MB" onchange="toggleReverseOptimization()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <strong style="color: #2196F3;">📦 3MB 이하 최적화</strong>
+                            <small style="display: block; color: #666; margin-top: 3px;">파일 크기를 자동으로 3MB 이하로 조정합니다</small>
+                        </div>
+                    </label>
                     <label>
                         프레임 레이트 (fps)
                         <input type="number" id="reverseFps" value="60" min="30" max="60" step="10">
@@ -1360,6 +1388,13 @@
                     💡 <strong>프레임 보간 기술</strong>로 부드러운 고화질 영상을 생성합니다. 원본 프레임 사이에 중간 프레임을 자동 생성하여 더 자연스러운 재생을 제공합니다.
                 </p>
                 <div class="gif-options">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; cursor: pointer; margin-bottom: 15px;">
+                        <input type="checkbox" id="highQualityOptimize3MB" onchange="toggleHighQualityOptimization()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <div style="flex: 1;">
+                            <strong style="color: #2196F3;">📦 3MB 이하 최적화</strong>
+                            <small style="display: block; color: #666; margin-top: 3px;">파일 크기를 자동으로 3MB 이하로 조정합니다</small>
+                        </div>
+                    </label>
                     <label>
                         목표 FPS (프레임 레이트)
                         <select id="highQualityTargetFps" style="margin-top: 5px; padding: 8px; border: 2px solid #ddd; border-radius: 6px;">
@@ -1722,6 +1757,10 @@
             const fileSizeMB = (blob.size / 1024 / 1024).toFixed(2);
             const sizeText = blob.size > 1024 * 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`;
 
+            // 3MB 초과 확인
+            const isOver3MB = blob.size > 3 * 1024 * 1024;
+            const sizeWarning = isOver3MB ? ' ⚠️ (3MB 초과)' : '';
+
             if (saveFolderHandle) {
                 try {
                     // 선택된 폴더에 저장
@@ -1731,9 +1770,10 @@
                     await writable.close();
 
                     // 성공 메시지 표시
-                    const message = `✅ 저장 완료!\n파일: ${filename}\n크기: ${sizeText}\n위치: ${saveFolderHandle.name} 폴더`;
-                    showStatus(message, 'success');
-                    showSaveNotification(filename, sizeText, `${saveFolderHandle.name} 폴더`);
+                    const icon = isOver3MB ? '⚠️' : '✅';
+                    const message = `${icon} 저장 완료!\n파일: ${filename}\n크기: ${sizeText}${sizeWarning}\n위치: ${saveFolderHandle.name} 폴더`;
+                    showStatus(message, isOver3MB ? 'warning' : 'success');
+                    showSaveNotification(filename, sizeText + sizeWarning, `${saveFolderHandle.name} 폴더`);
                 } catch (err) {
                     console.error('파일 저장 오류:', err);
                     // 실패 시 기본 다운로드로 전환
@@ -1759,10 +1799,15 @@
             const fileSizeMB = (blob.size / 1024 / 1024).toFixed(2);
             const sizeText = blob.size > 1024 * 1024 ? `${fileSizeMB}MB` : `${fileSizeKB}KB`;
 
+            // 3MB 초과 확인
+            const isOver3MB = blob.size > 3 * 1024 * 1024;
+            const sizeWarning = isOver3MB ? ' ⚠️ (3MB 초과)' : '';
+
             // 성공 메시지 표시
-            const message = `✅ 다운로드 완료!\n파일: ${filename}\n크기: ${sizeText}\n위치: 다운로드 폴더`;
-            showStatus(message, 'success');
-            showSaveNotification(filename, sizeText, '다운로드 폴더');
+            const icon = isOver3MB ? '⚠️' : '✅';
+            const message = `${icon} 다운로드 완료!\n파일: ${filename}\n크기: ${sizeText}${sizeWarning}\n위치: 다운로드 폴더`;
+            showStatus(message, isOver3MB ? 'warning' : 'success');
+            showSaveNotification(filename, sizeText + sizeWarning, '다운로드 폴더');
         }
 
         // 저장 완료 알림 (큰 팝업)
@@ -3240,12 +3285,32 @@
             }
 
             // 사용자 설정 가져오기
-            const targetFps = parseInt(document.getElementById('highQualityTargetFps').value) || 60;
+            let targetFps = parseInt(document.getElementById('highQualityTargetFps').value) || 60;
             const quality = document.getElementById('highQualityInterpolation').value || 'high';
-            const bitrate = parseInt(document.getElementById('highQualityBitrate').value) || 12000000;
+            let bitrate = parseInt(document.getElementById('highQualityBitrate').value) || 12000000;
             const applyFilter = document.getElementById('highQualityApplyFilter').checked;
 
             const totalDuration = videoPlayer.duration;
+
+            // 3MB 최적화 옵션 확인
+            const optimize3MB = document.getElementById('highQualityOptimize3MB')?.checked;
+            if (optimize3MB) {
+                const estimatedSizeMB = (bitrate * totalDuration) / (8 * 1024 * 1024);
+
+                if (estimatedSizeMB > 3) {
+                    const targetBitrate = Math.floor((3 * 8 * 1024 * 1024) / totalDuration);
+                    bitrate = Math.max(1000000, Math.min(targetBitrate, bitrate));
+
+                    if (bitrate < 4000000 && targetFps > 60) {
+                        targetFps = 60;
+                        document.getElementById('highQualityTargetFps').value = targetFps;
+                    }
+
+                    document.getElementById('highQualityBitrate').value = bitrate;
+                    showStatus(`📦 3MB 최적화: ${(bitrate/1000000).toFixed(1)}Mbps, ${targetFps}fps로 조정됨`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
 
             showStatus(`고화질 비디오 생성 중 (${targetFps}fps, ${quality} 품질)... 시간이 걸릴 수 있습니다.`, 'warning');
             showProgress(0);
@@ -3613,8 +3678,8 @@
             // 사용자 설정 가져오기
             const startTime = parseFloat(document.getElementById('trimStartTime').value);
             const endTime = parseFloat(document.getElementById('trimEndTime').value);
-            const fps = parseInt(document.getElementById('trimFps').value) || 30;
-            const bitrate = parseInt(document.getElementById('trimQuality').value) || 8000000;
+            let fps = parseInt(document.getElementById('trimFps').value) || 30;
+            let bitrate = parseInt(document.getElementById('trimQuality').value) || 8000000;
 
             // 유효성 검사
             if (startTime >= endTime) {
@@ -3628,6 +3693,30 @@
             }
 
             const duration = endTime - startTime;
+
+            // 3MB 최적화 옵션 확인
+            const optimize3MB = document.getElementById('trimOptimize3MB')?.checked;
+            if (optimize3MB) {
+                // 예상 파일 크기 계산 (비트레이트 기반)
+                // 파일 크기 (MB) ≈ (비트레이트 (bps) × 시간 (s)) / (8 × 1024 × 1024)
+                const estimatedSizeMB = (bitrate * duration) / (8 * 1024 * 1024);
+
+                if (estimatedSizeMB > 3) {
+                    // 3MB 목표로 비트레이트 자동 조정
+                    const targetBitrate = Math.floor((3 * 8 * 1024 * 1024) / duration);
+                    bitrate = Math.max(1000000, Math.min(targetBitrate, bitrate)); // 최소 1Mbps
+
+                    // FPS도 필요시 조정
+                    if (bitrate < 2000000 && fps > 24) {
+                        fps = 24;
+                        document.getElementById('trimFps').value = fps;
+                    }
+
+                    document.getElementById('trimQuality').value = bitrate;
+                    showStatus(`📦 3MB 최적화: ${(bitrate/1000000).toFixed(1)}Mbps, ${fps}fps로 조정됨`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
             showStatus(`구간 잘라내기 진행 중 (${duration.toFixed(1)}초, ${fps}fps, ${(bitrate/1000000).toFixed(0)}Mbps)...`, 'warning');
             showProgress(0);
 
@@ -4083,16 +4172,97 @@
             }
         }
 
+        // 3MB 최적화 토글 함수들
+        function toggleGifOptimization() {
+            const isOptimize = document.getElementById('gifOptimize3MB').checked;
+            if (isOptimize) {
+                // 3MB 이하로 자동 조정
+                document.getElementById('gifFps').value = 8;
+                document.getElementById('gifWidth').value = 360;
+                document.getElementById('gifQuality').value = 15;
+            }
+        }
+
+        function toggleTrimOptimization() {
+            const isOptimize = document.getElementById('trimOptimize3MB').checked;
+            if (isOptimize) {
+                document.getElementById('trimFps').value = 24;
+                document.getElementById('trimQuality').value = 3000000;
+            }
+        }
+
+        function toggleSlowMotionOptimization() {
+            const isOptimize = document.getElementById('slowMotionOptimize3MB').checked;
+            if (isOptimize) {
+                document.getElementById('slowMotionFps').value = 30;
+                document.getElementById('slowMotionQuality').value = 3000000;
+            }
+        }
+
+        function toggleReverseOptimization() {
+            const isOptimize = document.getElementById('reverseOptimize3MB').checked;
+            if (isOptimize) {
+                document.getElementById('reverseFps').value = 30;
+                document.getElementById('reverseQuality').value = 3000000;
+            }
+        }
+
+        function toggleHighQualityOptimization() {
+            const isOptimize = document.getElementById('highQualityOptimize3MB').checked;
+            if (isOptimize) {
+                document.getElementById('highQualityTargetFps').value = 60;
+                document.getElementById('highQualityBitrate').value = 8000000;
+            }
+        }
+
+        // 파일 크기 확인 및 경고 함수
+        function checkFileSizeAndWarn(blob, filename) {
+            const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+            const sizeInfo = `파일 크기: ${sizeMB}MB`;
+
+            if (blob.size > 3 * 1024 * 1024) {
+                showStatus(`⚠️ ${filename} 생성 완료! ${sizeInfo} (3MB 초과)`, 'warning');
+                return false;
+            } else {
+                showStatus(`✅ ${filename} 생성 완료! ${sizeInfo}`, 'success');
+                return true;
+            }
+        }
+
         // GIF 생성
         async function generateGif() {
             // 타임라인에서 시간 값 가져오기
             const startTime = gifRangeState.startTime;
             const endTime = gifRangeState.endTime;
-            const duration = endTime - startTime;
+            let duration = endTime - startTime;
 
-            const fps = parseInt(document.getElementById('gifFps').value);
-            const width = parseInt(document.getElementById('gifWidth').value);
-            const quality = parseInt(document.getElementById('gifQuality').value);
+            let fps = parseInt(document.getElementById('gifFps').value);
+            let width = parseInt(document.getElementById('gifWidth').value);
+            let quality = parseInt(document.getElementById('gifQuality').value);
+
+            // 3MB 최적화 옵션 확인
+            const optimize3MB = document.getElementById('gifOptimize3MB')?.checked;
+            if (optimize3MB) {
+                // 예상 파일 크기 계산 및 자동 조정
+                const estimatedFrames = duration * fps;
+                const estimatedSizeMB = (estimatedFrames * width * 0.001); // 대략적인 추정
+
+                if (estimatedSizeMB > 3) {
+                    // 너무 큰 경우 파라미터 자동 조정
+                    const reductionFactor = 3 / estimatedSizeMB;
+                    fps = Math.max(5, Math.floor(fps * Math.sqrt(reductionFactor)));
+                    width = Math.max(240, Math.floor(width * Math.sqrt(reductionFactor)));
+                    quality = Math.max(15, quality);
+
+                    // UI 업데이트
+                    document.getElementById('gifFps').value = fps;
+                    document.getElementById('gifWidth').value = width;
+                    document.getElementById('gifQuality').value = quality;
+
+                    showStatus(`📦 3MB 최적화: FPS ${fps}, 너비 ${width}px로 자동 조정됨`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
 
             // 품질 정보 포함한 상태 메시지
             const qualityText = quality === 1 ? '최고' : quality === 5 ? '높음' : quality === 10 ? '보통' : quality === 15 ? '낮음' : '최소';
@@ -4157,7 +4327,9 @@
 
                     videoPlayer.currentTime = originalTime;
                     hideProgress();
-                    showStatus('GIF가 성공적으로 생성되었습니다!', 'success');
+
+                    // 파일 크기 확인 및 경고
+                    checkFileSizeAndWarn(blob, filename);
                 });
 
                 gif.render();
@@ -4194,8 +4366,8 @@
 
             // 사용자 설정 가져오기
             const slowSpeed = parseFloat(document.getElementById('slowMotionSpeed').value);
-            const fps = parseInt(document.getElementById('slowMotionFps').value) || 60;
-            const bitrate = parseInt(document.getElementById('slowMotionQuality').value) || 8000000;
+            let fps = parseInt(document.getElementById('slowMotionFps').value) || 60;
+            let bitrate = parseInt(document.getElementById('slowMotionQuality').value) || 8000000;
 
             // 타임라인에서 슬로우 구간 가져오기
             const slowStartTime = trimRangeState.startTime;
@@ -4205,6 +4377,31 @@
             if (slowStartTime >= slowEndTime) {
                 showStatus('슬로우 모션 구간을 선택해주세요.', 'error');
                 return;
+            }
+
+            // 슬로우 모션 적용 시 길어지는 시간 계산
+            const slowDuration = (slowEndTime - slowStartTime) / slowSpeed;
+            const normalDuration = totalDuration - (slowEndTime - slowStartTime);
+            const finalDuration = slowDuration + normalDuration;
+
+            // 3MB 최적화 옵션 확인
+            const optimize3MB = document.getElementById('slowMotionOptimize3MB')?.checked;
+            if (optimize3MB) {
+                const estimatedSizeMB = (bitrate * finalDuration) / (8 * 1024 * 1024);
+
+                if (estimatedSizeMB > 3) {
+                    const targetBitrate = Math.floor((3 * 8 * 1024 * 1024) / finalDuration);
+                    bitrate = Math.max(1000000, Math.min(targetBitrate, bitrate));
+
+                    if (bitrate < 2000000 && fps > 30) {
+                        fps = 30;
+                        document.getElementById('slowMotionFps').value = fps;
+                    }
+
+                    document.getElementById('slowMotionQuality').value = bitrate;
+                    showStatus(`📦 3MB 최적화: ${(bitrate/1000000).toFixed(1)}Mbps, ${fps}fps로 조정됨`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
             }
 
             showStatus(`슬로우 모션 비디오 생성 중 (${slowSpeed}x 속도, ${fps}fps)... 시간이 걸릴 수 있습니다.`, 'warning');
@@ -4563,15 +4760,36 @@
             }
 
             // 사용자 설정 가져오기
-            const fps = parseInt(document.getElementById('reverseFps').value) || 60;
-            const bitrate = parseInt(document.getElementById('reverseQuality').value) || 8000000;
+            let fps = parseInt(document.getElementById('reverseFps').value) || 60;
+            let bitrate = parseInt(document.getElementById('reverseQuality').value) || 8000000;
+
+            // 비디오 정보 가져오기
+            const duration = videoPlayer.duration;
+
+            // 3MB 최적화 옵션 확인
+            const optimize3MB = document.getElementById('reverseOptimize3MB')?.checked;
+            if (optimize3MB) {
+                const estimatedSizeMB = (bitrate * duration) / (8 * 1024 * 1024);
+
+                if (estimatedSizeMB > 3) {
+                    const targetBitrate = Math.floor((3 * 8 * 1024 * 1024) / duration);
+                    bitrate = Math.max(1000000, Math.min(targetBitrate, bitrate));
+
+                    if (bitrate < 2000000 && fps > 30) {
+                        fps = 30;
+                        document.getElementById('reverseFps').value = fps;
+                    }
+
+                    document.getElementById('reverseQuality').value = bitrate;
+                    showStatus(`📦 3MB 최적화: ${(bitrate/1000000).toFixed(1)}Mbps, ${fps}fps로 조정됨`, 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
 
             showStatus(`역재생 비디오 생성 중 (${fps}fps, ${(bitrate/1000000).toFixed(0)}Mbps)... 이 작업은 시간이 걸릴 수 있습니다.`, 'warning');
             showProgress(0);
 
             try {
-                // 비디오 정보 가져오기
-                const duration = videoPlayer.duration;
                 const totalFrames = Math.floor(duration * fps);
 
                 // Canvas 설정
